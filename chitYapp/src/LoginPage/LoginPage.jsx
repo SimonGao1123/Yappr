@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './LoginPage.css';
 
-function LoginPage ({setLoginStatus}) {
+function LoginPage ({setLoginStatus, setCurrentUser}) {
     const [loginUsername, setLoginUsername] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
 
@@ -28,6 +28,7 @@ function LoginPage ({setLoginStatus}) {
                 setLoginPassword={setLoginPassword}
                 setDisplayMessage={setDisplayMessage}
                 setLoginStatus={setLoginStatus}
+                setCurrentUser={setCurrentUser}
                 />
             </div>;
 
@@ -66,19 +67,22 @@ function LoginPage ({setLoginStatus}) {
 }
 
 
-function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPassword, setDisplayMessage, setLoginStatus}) {
+function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPassword, setDisplayMessage, setLoginStatus, setCurrentUser}) {
     function handleUserLogin (e) {
         e.preventDefault();
 
         fetch("http://localhost:3000/userLogins/login", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
+            credentials: "include",
             body: JSON.stringify({username: loginUsername, password: loginPassword})
         }).then(async (response) => {
             const parsed = await response.json();
 
             if (parsed.success) {
+                const {username, id} = parsed.user;
                 setLoginStatus(false);
+                setCurrentUser({username, id}); 
             }
             setDisplayMessage(parsed.message);
         }).catch((error) => {

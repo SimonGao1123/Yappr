@@ -3,12 +3,46 @@ import db from '../database.js';
 import crypto from 'crypto';
 const router = express.Router();
 
+router.get("/me", (req, res) => {
+    if (!req.session.userID) {
+        // no session detected
+        return res.json({loggedIn: false});
+    }
+
+    res.json({loggedIn: true, 
+        user: {
+            username: req.session.username,
+            id: req.session.userID
+        }
+    });
+
+}); // to skip login process with session 
+
+router.post("/logout", (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            console.error("Logout error:", err);
+            return res.status(500).json({ success: false, message: "Logout failed" });
+        }
+
+        // Clear the session cookie in the browser
+        res.clearCookie("chat.sid", {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: false
+        });
+
+        // Send success response
+        res.json({ success: true, message: "Logged out successfully" });
+    });
+});
+
 router.post("/login", async (req, res) => {
     try {
         const {username, password} = req.body;
         if (username && password) {
             const [rows] = await db.promise().query(
-                "SELECT password FROM Users WHERE username = ?",
+                "SELECT id, username, password FROM Users WHERE username = ?",
             [username]
             ); // selects all users with matched username
             
@@ -19,8 +53,13 @@ router.post("/login", async (req, res) => {
 
             const stored = rows[0].password;
             if (comparePassword(password, stored)) {
+                req.session.userID = rows[0].id;
+                req.session.username = rows[0].username; // stores userId and username for session
+
                 // password matches the password associated with the user
-                res.status(201).json({message: `Successfully logged in as ${username}`, success: true});
+                res.status(201).json({message: `Successfully logged in as ${username}`, success: true, user: {username: username, id: rows[0].id}});
+            
+                
             } else {
                 res.status(401).json({message: `Invalid Username/Password`, success: false});
             }
