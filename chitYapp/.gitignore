@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Ignore database.js in backend folder
+backend/database.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
