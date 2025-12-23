@@ -1,0 +1,134 @@
+label {
+    display: block;
+    text-align: left;
+    font-size: 0.8em;
+}
+h1 {
+    margin: 40px auto;
+    text-align: center;
+    font-size: 2.4em;
+}
+main {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+
+    padding: 2rem;
+    width: 320px;
+    min-height: 220px;
+
+    border-radius: 16px;
+    margin: 0 auto;
+
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+
+    text-align: center;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+
+
+}
+#confirm-pass-container {
+    margin-top: 5px;
+}
+input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+
+    background: rgba(255, 255, 255, 0.182);
+    color: white;
+
+    font-size: 0.95rem;
+    outline: none;
+    margin: 0 auto;
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+input:focus {
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.409);
+    border-width: 1px;
+}
+
+button {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    display: block;
+
+    background: linear-gradient(135deg, #ff9a44, #ff6a00);
+    color: white;
+
+    font-weight: 600;
+    cursor: pointer;
+
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin: 0 auto;
+    margin-top: 3vh;
+}
+
+button:hover {
+    background: linear-gradient(135deg, #ff8f2c, #ff6a00);
+
+}
+
+button:active {
+    background: linear-gradient(135deg, #ff8316, #ff6a00);
+
+}
+p button {
+    background: none;
+    color: #ffd6b0;
+    padding: 0;
+    font-weight: 600;
+    text-decoration: underline;
+    box-shadow: none;
+    display: inline;
+}
+
+p button:hover {
+    color: white;
+    transform: none;
+}
+
+.login-input-container,
+.register-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#display-msg {
+    min-height: 1.2em;
+    font-size: 0.85rem;
+    color: #ffd6b0;
+    text-align: center;
+}
+
+h1 {
+    margin: 40px auto 20px;
+    text-align: center;
+    color: white;
+}
+
+h2 {
+    margin-bottom: 10px;
+    color: white;
+}

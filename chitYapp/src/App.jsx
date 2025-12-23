@@ -39,6 +39,8 @@ function App() {
       });
 
     }, []); // will run everytime url path is changed, automatically logs in with user session
+
+    
     console.log("Curr user: ", currentUser);
 
     const TEMPORARYPAGE = (

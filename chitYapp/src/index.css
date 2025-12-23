@@ -1,0 +1,13 @@
+html {
+    background: linear-gradient(135deg, #fd7b1d, #eb2886);
+    background-repeat: no-repeat;
+    background-size: cover;
+
+    min-height: 100vh;
+
+    font-family: 'Inter', sans-serif;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}

@@ -49,19 +49,20 @@ function LoginPage ({setLoginStatus, setCurrentUser}) {
     return (
         <>
             <h1>ChitYapp</h1>
-            
-            {displayLogin ? loginSection : registerSection}
-            
-            <p id="display-msg">{displayMessage}</p>
-            
-            {displayLogin ? 
-            <p>Register <button onClick={() => 
-                {switchLoginDisplay(false) 
-                resetAllFields()}}>here</button></p> :
-            <p>Login <button onClick={() => 
-            {switchLoginDisplay(true)
-            resetAllFields()
-            }}>here</button></p>}
+            <main>
+                {displayLogin ? loginSection : registerSection}
+                
+                <p id="display-msg">{displayMessage}</p>
+                
+                {displayLogin ? 
+                <p>Register <button onClick={() => 
+                    {switchLoginDisplay(false) 
+                    resetAllFields()}}>here</button></p> :
+                <p>Login <button onClick={() => 
+                {switchLoginDisplay(true)
+                resetAllFields()
+                }}>here</button></p>}
+            </main>
         </>
     );
 }
@@ -96,13 +97,11 @@ function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPas
             <h2>Login</h2>
             <form onSubmit={handleUserLogin}>
                 <div className='login-input-container'>
-                    <label htmlFor='login-username'>Enter your Username: </label>
-                    <input id="login-username" type="text" maxLength={30} value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)}/>
+                    <input placeholder="Username" id="login-username" type="text" maxLength={30} value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)}/>
                 </div>
 
                 <div className='login-input-container'>
-                    <label htmlFor='login-password'>Enter your Password: </label>
-                    <input id="login-password" type="text" maxLength={30} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
+                    <input placeholder='Password' id="login-password" type="text" maxLength={30} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
                 </div>
 
                 <button id="login-btn" type="submit">Login</button>
@@ -160,21 +159,19 @@ function UserRegister ({registerUsername, setRegisterUsername, registerPassword,
             <form onSubmit={handleUserRegister}>
 
                 <div className='register-input-container'>
-                    <label htmlFor='register-username'>Enter your Username: </label>
-                    <input id="register-username" type="text" maxLength={30} value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)}/>
+                    <input placeholder="Username" id="register-username" type="text" maxLength={30} value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <label htmlFor='register-email'>Enter your Email: </label>
-                    <input id="register-email" type="text" maxLength={225} value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)}/>
+                    <input placeholder="Email" id="register-email" type="text" maxLength={225} value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <label htmlFor='register-password'>Enter your Password: </label>
-                    <input id="register-password" type="text" maxLength={30} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)}/>
+                    <input placeholder="Password" id="register-password" type="text" maxLength={30} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)}/>
+                </div>
 
-                    <label htmlFor='register-password-confirm'>Confirm your Password: </label>
-                    <input id="register-password-confirm" type="text" maxLength={30} value={confirmRegisterPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
+                <div className='register-input-container'>
+                    <input placeholder="Confirm Password" id="register-password-confirm" type="text" maxLength={30} value={confirmRegisterPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
                 </div>
 
                 
