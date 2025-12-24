@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import userLoginRouter from './routes/userLogin.js';
+import friendsRouter from './routes/friendsRoutes.js'
 import session from 'express-session'; 
 
 const app = express();
@@ -27,7 +28,7 @@ app.use(session({
 
 // ROUTES
 app.use("/userLogins", userLoginRouter);
-
+app.use("/friends", friendsRouter);
 
 
 app.listen(3000, () => console.log("http://localhost:3000")); // temporary (for development)

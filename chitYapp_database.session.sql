@@ -1,14 +1,21 @@
+-- USER LOGIN TABLE
 -- @block
 CREATE TABLE Users (
-    id INT AUTO_INCREMENT,
+    user_id INT AUTO_INCREMENT,
     username VARCHAR(30) NOT NULL UNIQUE,
     password VARCHAR(225) NOT NULL,
     email VARCHAR(225) NOT NULL UNIQUE,
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
+    PRIMARY KEY (user_id)
 );
+
+-- @block
+INSERT INTO Users (username, password, email) VALUES ("simon234", "32", "1234"); 
+
 -- @block 
-DELETE FROM Users;
+DROP TABLE Users;
+-- @block 
+DELETE * FROM Users;
 
 -- @block
 SELECT * FROM Users;
@@ -19,3 +26,35 @@ CREATE UNIQUE INDEX uniq_email ON Users(email);
 
 -- @block 
 SHOW INDEX FROM Users;
+
+
+-- FRIENDS TABLE
+-- @block
+CREATE TABLE Friends (
+    friend_id INT AUTO_INCREMENT,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (friend_id),
+
+    CONSTRAINT fk_friends_sender
+        FOREIGN KEY (sender_id)
+        REFERENCES Users(user_id),
+    
+    CONSTRAINT fk_friends_receiver
+        FOREIGN KEY (receiver_id)
+        REFERENCES Users(user_id)
+);
+-- @block
+SELECT * FROM Friends;
+
+-- @block
+UPDATE Friends
+SET status="unfriended"
+WHERE friend_id = 6;
+
+-- @block
+DELETE * FROM Friends;
