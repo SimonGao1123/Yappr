@@ -10,12 +10,15 @@ CREATE TABLE Users (
 );
 
 -- @block
-INSERT INTO Users (username, password, email) VALUES ("simon234", "32", "1234"); 
+INSERT INTO Users (username, password, email) VALUES ("simon", "1", "1"); 
+INSERT INTO Users (username, password, email) VALUES ("judy", "2", "2"); 
+INSERT INTO Users (username, password, email) VALUES ("alvin", "3", "3"); 
+INSERT INTO Users (username, password, email) VALUES ("gordon", "4", "4"); 
 
 -- @block 
 DROP TABLE Users;
 -- @block 
-DELETE * FROM Users;
+DELETE FROM Users;
 
 -- @block
 SELECT * FROM Users;
@@ -53,8 +56,11 @@ SELECT * FROM Friends;
 
 -- @block
 UPDATE Friends
-SET status="unfriended"
-WHERE friend_id = 6;
+SET status="rejected"
+WHERE friend_id = 1;
 
 -- @block
-DELETE * FROM Friends;
+DELETE FROM Friends;
+
+-- @block
+DROP TABLE Friends;

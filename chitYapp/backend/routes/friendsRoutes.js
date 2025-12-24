@@ -44,6 +44,9 @@ router.post("/sendFriendRequest", async (req, res) => {
             return res.status(401).json({success: false, message: "User doesn't exist"});
         }
 
+        if (idReceiver === sender_id) {
+            return res.status(401).json({success: false, message: "Cannot send friend request to yourself"});
+        }
 
         const checkCurrStatus = await db.promise().query(
             'SELECT friend_id, status FROM Friends WHERE sender_id = ? AND receiver_id = ?',
@@ -78,14 +81,14 @@ router.post("/sendFriendRequest", async (req, res) => {
         }
         else if (rowsCurrStatus[0]?.status === "unfriended" || rowsCurrStatus[0]?.status === "rejected") {
             await db.promise().query(
-                'UPDATE Friends SET status=?, updated_at = CURDATE() WHERE friend_id = ?',
+                'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
                 ["pending", rowsCurrStatus[0].friend_id]
             )
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         }
         else if (swappedRowsCurrStatus[0]?.status === "unfriended" || swappedRowsCurrStatus[0]?.status === "rejected") {
             await db.promise().query(
-                'UPDATE Friends SET status=?, sender_id=?, receiver_id=?, updated_at = CURDATE() WHERE friend_id = ?',
+                'UPDATE Friends SET status=?, sender_id=?, receiver_id=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
                 ["pending", sender_id, idReceiver, swappedRowsCurrStatus[0].friend_id]
             )
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
@@ -98,6 +101,215 @@ router.post("/sendFriendRequest", async (req, res) => {
     }
 
 
+});
+
+
+// TODO:
+router.post("/reject", async (req, res) => {
+    const {friend_id, sender_username, sender_id} = req.body; // user is the receiver
+
+    // only valid for pending requests
+    try {
+        const [rows] = await db.promise().query(
+            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
+            [friend_id]
+        );
+        if (rows.length === 0) {
+            return res.status(401).json({success: false, message: "Friend request not found"});
+        }
+        if (rows[0].status !== "pending") {
+            return res.status(401).json({success: false, message: "Friend request is not pending"});
+        }
+        if (rows[0].sender_id !== sender_id) {
+            return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
+        }
+
+        await db.promise().query(
+            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
+            ["rejected", friend_id]
+        );
+        return res.status(201).json({success: true, message: `Successfully rejected ${sender_username}'s friend request`});
+    } catch (err) {
+        console.log("Error while rejecting friend request: ", err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+    
+});
+router.post("/accept", async (req, res) => {
+    const {friend_id, sender_username, sender_id} = req.body; // user is the receiver
+
+    // only valid for pending requests
+    try {
+        const [rows] = await db.promise().query(
+            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
+            [friend_id]
+        );
+        if (rows.length === 0) {
+            return res.status(401).json({success: false, message: "Friend request not found"});
+        }
+        if (rows[0].status !== "pending") {
+            return res.status(401).json({success: false, message: "Friend request is not pending"});
+        }
+        if (rows[0].sender_id !== sender_id) {
+            return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
+        }
+
+        await db.promise().query(
+            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
+            ["accepted", friend_id]
+        );
+        return res.status(201).json({success: true, message: `Successfully accepted ${sender_username}'s friend request`});
+    } catch (err) {
+        console.log("Error while accepting friend request: ", err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+});
+
+router.post("/unfriend", async(req, res) => {
+    const {friend_id, other_user_username, other_user_id} = req.body; // user can be receiver or sender
+
+    // only valid for accepted
+    try {
+        const [rows] = await db.promise().query(
+            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
+            [friend_id]
+        );
+        if (rows.length === 0) {
+            return res.status(401).json({success: false, message: "Friend not found"});
+        }
+        if (rows[0].status !== "accepted") {
+            return res.status(401).json({success: false, message: "Currently not friends with user"});
+        }
+
+        await db.promise().query(
+            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
+            ["unfriended", friend_id]
+        );
+        return res.status(201).json({success: true, message: `Successfully unfriended ${other_user_username}`});
+    } catch (err) {
+        console.log("Error while unfriending: ", err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+});
+
+// return array of objects including their username, user_id, and friend_id
+router.get("/currFriends/:user_id", async(req, res) => {
+    const user_id = req.params.user_id; // gets the current user logged in id
+
+    try {
+        const userSender = await db.promise().query(
+            'SELECT friend_id, receiver_id FROM Friends WHERE sender_id=? AND status="accepted"',
+            [user_id]
+        );
+        const userReceiver = await db.promise().query(
+            'SELECT friend_id, sender_id FROM Friends WHERE receiver_id=? AND status="accepted"',
+            [user_id]
+        ); 
+
+        const rowsUserSender = userSender[0];
+        const rowsUserReceiver = userReceiver[0];
+
+        const currFriends = []; // to be returned
+        
+        for (const friends of rowsUserSender) {
+            // friends will store friend_id and receiver_id (where user_id is the sender)
+            const [rows] = await db.promise().query(
+                'SELECT username FROM Users WHERE user_id = ?',
+                [friends.receiver_id]
+            );
+            currFriends.push(
+                {
+                    username: rows[0].username, 
+                    user_id: friends.receiver_id, 
+                    friend_id: friends.friend_id
+                }
+            );
+        }
+        for (const friends of rowsUserReceiver) {
+            // friends will store friend_id and sender_id (where user_id is the receiver)
+            const [rows] = await db.promise().query(
+                'SELECT username FROM Users WHERE user_id = ?',
+                [friends.sender_id]
+            );
+            currFriends.push(
+                {
+                    username: rows[0].username, 
+                    user_id: friends.sender_id, 
+                    friend_id: friends.friend_id
+                }
+            );
+        }
+
+        return res.status(200).json({success: true, message: "updated current friends list", currFriends:currFriends});
+    } catch (err) {
+        console.log("Error while displaying friends: ", err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+    
+});
+router.get("/incomingRequests/:user_id", async(req, res) => {
+    const user_id = req.params.user_id;
+    try {
+        // user is the receiver and returns all PENDING
+        const incomingReq = await db.promise().query(
+            'SELECT friend_id, sender_id FROM Friends WHERE receiver_id=?',
+            [user_id]
+        );
+        const rowsIncomReq = incomingReq[0];
+
+        const allRequests = [];
+
+        for (const incoming of rowsIncomReq) {
+            const [rows] = await db.promise().query(
+                'SELECT username FROM Users WHERE user_id =?',
+                [incoming.sender_id]
+            );
+            allRequests.push(
+                {
+                    username: rows[0].username,
+                    user_id: incoming.sender_id,
+                    friend_id: incoming.friend_id
+                }
+            );
+        }
+
+        return res.status(200).json({success: true, message: "updated incoming friend requests list", incomingRequests: allRequests});
+    } catch (err) {
+        console.log("Error while displaying incoming friend requests: ", err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+});
+router.get("/outgoingRequests/:user_id", async (req, res) => {
+    const user_id = req.params.user_id;
+    try {
+        // user is the sender and returns all PENDING
+        const outgoingReq = await db.promise().query(
+            'SELECT friend_id, receiver_id FROM Friends WHERE sender_id=?',
+            [user_id]
+        );
+        const rowsOutReq = outgoingReq[0];
+
+        const allRequests = [];
+
+        for (const outgoing of rowsOutReq) {
+            const [rows] = await db.promise().query(
+                'SELECT username FROM Users WHERE user_id =?',
+                [outgoing.receiver_id]
+            );
+            allRequests.push(
+                {
+                    username: rows[0].username,
+                    user_id: outgoing.receiver_id,
+                    friend_id: outgoing.friend_id
+                }
+            );
+        }
+
+        return res.status(200).json({success: true, message: "updated outgoing friend requests list", outgoingRequests: allRequests});
+    } catch (err) {
+        console.log("Error while displaying outgoing friend requests: ", err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
 });
 
 export default router;
