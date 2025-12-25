@@ -42,7 +42,7 @@ router.post("/login", async (req, res) => {
         const {username, password} = req.body;
         if (username && password) {
             const [rows] = await db.promise().query(
-                "SELECT id, username, password FROM Users WHERE username = ?",
+                "SELECT user_id, username, password FROM Users WHERE username = ?",
             [username]
             ); // selects all users with matched username
             
@@ -53,11 +53,11 @@ router.post("/login", async (req, res) => {
 
             const stored = rows[0].password;
             if (comparePassword(password, stored)) {
-                req.session.userID = rows[0].id;
+                req.session.userID = rows[0].user_id;
                 req.session.username = rows[0].username; // stores userId and username for session
 
                 // password matches the password associated with the user
-                res.status(201).json({message: `Successfully logged in as ${username}`, success: true, user: {username: username, id: rows[0].id}});
+                res.status(201).json({message: `Successfully logged in as ${username}`, success: true, user: {username: username, id: rows[0].user_id}});
             
                 
             } else {

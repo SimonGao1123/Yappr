@@ -56,8 +56,8 @@ SELECT * FROM Friends;
 
 -- @block
 UPDATE Friends
-SET status="rejected"
-WHERE friend_id = 1;
+SET status="accepted"
+WHERE friend_id = 6;
 
 -- @block
 DELETE FROM Friends;

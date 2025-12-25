@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import './App.css'
 import LoginPage from './LoginPage/LoginPage.jsx';
+import FriendsPage from './FriendsPage/FriendsPage.jsx';
 
 function handleLogOut (setCurrentUser, setLoginStatus) {
   fetch("http://localhost:3000/userLogins/logout", {
@@ -19,8 +20,16 @@ function handleLogOut (setCurrentUser, setLoginStatus) {
   setLoginStatus(true); 
 }
 function App() {
+    // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
     const [currentUser, setCurrentUser] = useState(null); // holds username/id of current user
+
+    // FRIENDS PAGE:
+    const [currentFriends, setCurrentFriends] = useState([]); // holds {username, user_id, friend_id}
+    const [outgoingFriendReq, setOutFriendReq] = useState([]);
+    const [incomingFriendReq, setInFriendReq] = useState([]); 
+    
+
 
     useEffect(() => {
       fetch("http://localhost:3000/userLogins/me", {
@@ -46,6 +55,15 @@ function App() {
     const TEMPORARYPAGE = (
       <>
         {currentUser ? <p>Welcome {currentUser.username}, id: {currentUser.id}</p> : <></>}
+        <FriendsPage
+          currentFriends={currentFriends}
+          setCurrentFriends={setCurrentFriends}
+          outgoingFriendReq={outgoingFriendReq}
+          setOutFriendReq={setOutFriendReq}
+          incomingFriendReq={incomingFriendReq}
+          setInFriendReq={setInFriendReq}
+          currentUser={currentUser}
+        />
         <button onClick={() => handleLogOut(setCurrentUser, setLoginStatus)}>Logout</button>
       </>
     );

@@ -44,7 +44,7 @@ router.post("/sendFriendRequest", async (req, res) => {
             return res.status(401).json({success: false, message: "User doesn't exist"});
         }
 
-        if (idReceiver === sender_id) {
+        if (Number(idReceiver) === sender_id) {
             return res.status(401).json({success: false, message: "Cannot send friend request to yourself"});
         }
 
@@ -102,9 +102,35 @@ router.post("/sendFriendRequest", async (req, res) => {
 
 
 });
+router.post("/cancel", async (req, res) => {
+    const {friend_id, receiver_id, receiver_username} = req.body;
 
+    // USER IS SENDER
+    try {
+        const [rows] = await db.promise().query(
+            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
+            [friend_id]
+        );
+        if (rows.length === 0) {
+            return res.status(401).json({success: false, message: "Friend request not found"});
+        }
+        if (rows[0].status !== "pending") {
+            return res.status(401).json({success: false, message: "Friend request is not pending"});
+        }
+        if (rows[0].receiver_id !== receiver_id) {
+            return res.status(401).json({success: false, message: `You don't have a friend request to ${receiver_username}`});
+        }
 
-// TODO:
+        await db.promise().query(
+            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
+            ["rejected", friend_id]
+        );
+        return res.status(201).json({success: true, message: `Successfully cancelled request towards ${receiver_username}`});
+    } catch (err) {
+        console.log("Error while cancelling friend request: ", err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+});
 router.post("/reject", async (req, res) => {
     const {friend_id, sender_username, sender_id} = req.body; // user is the receiver
 
@@ -252,7 +278,7 @@ router.get("/incomingRequests/:user_id", async(req, res) => {
     try {
         // user is the receiver and returns all PENDING
         const incomingReq = await db.promise().query(
-            'SELECT friend_id, sender_id FROM Friends WHERE receiver_id=?',
+            'SELECT friend_id, sender_id FROM Friends WHERE receiver_id=? AND status="pending"',
             [user_id]
         );
         const rowsIncomReq = incomingReq[0];
@@ -284,7 +310,7 @@ router.get("/outgoingRequests/:user_id", async (req, res) => {
     try {
         // user is the sender and returns all PENDING
         const outgoingReq = await db.promise().query(
-            'SELECT friend_id, receiver_id FROM Friends WHERE sender_id=?',
+            'SELECT friend_id, receiver_id FROM Friends WHERE sender_id=? AND status="pending"',
             [user_id]
         );
         const rowsOutReq = outgoingReq[0];

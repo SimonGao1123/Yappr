@@ -12,6 +12,8 @@ function LoginPage ({setLoginStatus, setCurrentUser}) {
     const [displayLogin, switchLoginDisplay] = useState(true); // true means login is displayed, false means registration 
 
     const [displayMessage, setDisplayMessage] = useState(""); // displays if login/registration failed
+
+    
     function resetAllFields () {
         setLoginUsername("");
         setLoginPassword("");

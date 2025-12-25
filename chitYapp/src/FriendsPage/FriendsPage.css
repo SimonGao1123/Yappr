@@ -1,0 +1,15 @@
+.unfriend-btn, .cancel-req-btn,
+.reject-req-btn, .accept-req-btn {
+    
+}
+
+li {
+    background-color: white;
+    list-style: none;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 5%;
+    margin-top: 10px;
+}
