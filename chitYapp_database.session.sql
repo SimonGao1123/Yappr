@@ -69,7 +69,7 @@ DROP TABLE Friends;
 -- CHATS TABLE (holds all chats)
 -- @block
 CREATE TABLE Chats (
-    chat_id INT AUTO_INCREMENT,
+    chat_id INT AUTO_INCREMENT UNIQUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     creator_id INT NOT NULL,
     chat_name VARCHAR(30) NOT NULL,
@@ -107,3 +107,4 @@ SELECT * FROM Chat_Users;
 -- @block
 
 DROP TABLE Chat_Users;
+
