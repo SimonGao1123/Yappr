@@ -1,15 +1,195 @@
-.unfriend-btn, .cancel-req-btn,
-.reject-req-btn, .accept-req-btn {
-    
+/* ===== Reset box-sizing (helpful) ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-li {
+/* ===== BUTTON BASE (shared) ===== */
+.unfriend-btn, .cancel-req-btn,
+.reject-req-btn, .accept-req-btn {
+    border-radius: 5px;
+    border: none;
+    padding: 5px 8px;
+    color: white;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background 140ms ease, transform 120ms ease;
+}
+
+/* ACCEPT (GREEN) */
+.accept-req-btn {
+    background: linear-gradient(135deg, #0B8F3C 0%, #2ECC71 100%);
+}
+.accept-req-btn:hover, #send-req-btn:hover {
+    background: linear-gradient(135deg, #0b8136 0%, #29b161 100%);
+}
+.accept-req-btn:active, #send-req-btn:active {
+    background: linear-gradient(135deg, #086028 0%, #20884b 100%);
+}
+
+/* REJECT / CANCEL / UNFRIEND (RED) */
+.unfriend-btn, .cancel-req-btn,
+.reject-req-btn {
+    background: linear-gradient(135deg, #B71C1C 0%, #FF3B30 100%);
+}
+.unfriend-btn:hover, .cancel-req-btn:hover,
+.reject-req-btn:hover {
+    background: linear-gradient(135deg, #941616 0%, #c92d25 100%);
+}
+.unfriend-btn:active, .cancel-req-btn:active,
+.reject-req-btn:active {
+    background: linear-gradient(135deg, #6f1010 0%, #9b241d 100%);
+}
+
+/* ===== PAGE GRID =====
+   Left column: Search + Current Friends (stacked)
+   Right column: wrapper (#friends-right-column) holding Outgoing + Incoming (50/50)
+*/
+#friends-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* change 360px to 1fr if you want fluid right column */
+    grid-template-rows: auto 1fr;     /* search row auto, content row fills remaining height */
+    gap: 10px;
+    padding: 2vw;
+    max-width: 90vw;
+    height: 80vh;                     /* overall panel height */
+    margin: 0 auto;
     background-color: white;
+    border-radius: 10px;
+    align-items: start;
+    min-width: 0; /* avoid overflowing due to long content */
+}
+
+/* ensure grid children can shrink so their own overflow works */
+#friends-main > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ===== LEFT COLUMN ===== */
+
+/* Search form (top-left) */
+#add-friend-form {
+    grid-column: 1;
+    grid-row: 1;
+    display: block; /* natural height */
+    margin: 0;
+}
+
+/* inner search row */
+#friend-search-container {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* input and submit */
+#user-search-bar {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(16,24,40,0.06);
+    outline: none;
+    font-size: 0.95rem;
+    min-width: 0;
+}
+
+#send-req-btn {
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #0B8F3C 0%, #2ECC71 100%);
+    color: #fff;
+    font-weight: 600;
+}
+
+#display-msg {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* Current friends (bottom-left) — fills remaining left space and scrolls */
+#current-friends-list {
+    grid-column: 1;
+    grid-row: 2;
+    overflow-y: auto;
+    min-height: 0; /* critical for scrolling inside grid */
+    padding: 14px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(17,24,39,0.06);
+}
+
+/* ===== RIGHT COLUMN WRAPPER =====
+   This wrapper occupies the full right column height and splits its children 50/50
+*/
+#friends-right-column {
+  grid-column: 2;
+  grid-row: 1 / span 2;  /* occupy both rows so wrapper fills full right column height */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0; /* allow children to shrink and scroll */
+  padding: 0;    /* child panels have their own padding */
+}
+
+/* children (outgoing/incoming) each take equal height and scroll */
+#friends-right-column > * {
+  flex: 1 1 0;
+  min-height: 0;       /* essential so overflow works inside flex children */
+  overflow-y: auto;
+  padding: 14px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(17,24,39,0.06);
+  box-sizing: border-box;
+}
+
+/* If your outgoing/incoming components still use these IDs, it's fine:
+   they are now children of #friends-right-column and will get the rules above.
+   (No grid placement on these IDs is required any more.) */
+
+/* ===== LIST STYLES ===== */
+#current-friends-list ul,
+#friends-right-column > #outgoing-req-list ul,
+#friends-right-column > #incoming-req-list ul,
+#incoming-req-list ul,
+#outgoing-req-list ul {
     list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.friends-li {
+    background-color: #ffffff;
     border-radius: 10px;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    padding: 5%;
+    padding: 12px;
     margin-top: 10px;
+    box-shadow: 0 2px 8px rgba(17,24,39,0.04);
 }
+
+/* incoming button container */
+.incoming-friends-btn-container {
+    display: flex;
+    gap: 10px;
+}
+
+/* header sizing */
+.friends-header {
+    font-size: clamp(10px, 2.5vw, 20px);
+    margin: 0 0 8px 0;
+}
+
+/* ===== HELPERS ===== */
+/* Ensure long child content doesn't force overflow horizontally */
+#friends-main, #friends-right-column, #current-friends-list {
+  min-width: 0;
+}
+

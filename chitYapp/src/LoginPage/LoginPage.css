@@ -1,14 +1,10 @@
-label {
-    display: block;
-    text-align: left;
-    font-size: 0.8em;
-}
-h1 {
+.title-login {
     margin: 40px auto;
     text-align: center;
     font-size: 2.4em;
+    color: white;
 }
-main {
+.main-login {
     display: flex;
     flex-direction: column;
     background: rgba(255, 255, 255, 0.15);
@@ -30,7 +26,7 @@ main {
     text-align: center;
 }
 
-form {
+.form-login {
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -43,7 +39,7 @@ form {
 #confirm-pass-container {
     margin-top: 5px;
 }
-input {
+.input-login {
     width: 100%;
     padding: 10px 12px;
     border-radius: 8px;
@@ -57,17 +53,17 @@ input {
     margin: 0 auto;
 }
 
-input::placeholder {
+.input-login::placeholder {
     color: rgba(255, 255, 255, 0.7);
 }
 
-input:focus {
+.input-login:focus {
     border-color: #ffffff;
     background: rgba(255, 255, 255, 0.409);
     border-width: 1px;
 }
 
-button {
+.login-btn {
     padding: 10px 14px;
     border-radius: 8px;
     border: none;
@@ -84,16 +80,16 @@ button {
     margin-top: 3vh;
 }
 
-button:hover {
+.login-btn:hover {
     background: linear-gradient(135deg, #ff8f2c, #ff6a00);
 
 }
 
-button:active {
+.login-btn:active {
     background: linear-gradient(135deg, #ff8316, #ff6a00);
 
 }
-p button {
+.inline-btn-login {
     background: none;
     color: #ffd6b0;
     padding: 0;
@@ -103,7 +99,7 @@ p button {
     display: inline;
 }
 
-p button:hover {
+.inline-btn-login:hover {
     color: white;
     transform: none;
 }
@@ -122,13 +118,8 @@ p button:hover {
     text-align: center;
 }
 
-h1 {
-    margin: 40px auto 20px;
-    text-align: center;
-    color: white;
-}
 
-h2 {
+.login-header {
     margin-bottom: 10px;
     color: white;
 }

@@ -1,0 +1,9 @@
+General
+- Navbar for pages
+
+Friends Page
+- CSS STYLING
+- Fix issue with slow update, try to make it update whenever current user changes or a change in friends list
+
+Messaging Page
+- TODO

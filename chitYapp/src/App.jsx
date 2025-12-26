@@ -55,6 +55,7 @@ function App() {
     const TEMPORARYPAGE = (
       <>
         {currentUser ? <p>Welcome {currentUser.username}, id: {currentUser.id}</p> : <></>}
+        <button onClick={() => handleLogOut(setCurrentUser, setLoginStatus)}>Logout</button>
         <FriendsPage
           currentFriends={currentFriends}
           setCurrentFriends={setCurrentFriends}
@@ -64,7 +65,7 @@ function App() {
           setInFriendReq={setInFriendReq}
           currentUser={currentUser}
         />
-        <button onClick={() => handleLogOut(setCurrentUser, setLoginStatus)}>Logout</button>
+        
       </>
     );
 

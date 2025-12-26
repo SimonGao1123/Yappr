@@ -11,11 +11,16 @@ function FriendsPage (
     
     return (
         <>
-            <SearchUsers searchBarInput={searchBarInput} setSearchBarInput={setSearchBarInput} currentUser={currentUser}/>
-            
-            <DisplayCurrentFriends currentFriends={currentFriends} setCurrentFriends={setCurrentFriends} currentUser={currentUser}/>
-            <DisplayOutgoingRequests outgoingFriendReq={outgoingFriendReq} setOutFriendReq={setOutFriendReq} currentUser={currentUser}/>
-            <DisplayIncomingRequests incomingFriendReq={incomingFriendReq} setInFriendReq={setInFriendReq} currentUser={currentUser}/>
+            <main id="friends-main">
+                <SearchUsers searchBarInput={searchBarInput} setSearchBarInput={setSearchBarInput} currentUser={currentUser}/>
+                
+                <DisplayCurrentFriends currentFriends={currentFriends} setCurrentFriends={setCurrentFriends} currentUser={currentUser}/>
+                
+                <div id="friends-right-column">
+                    <DisplayOutgoingRequests outgoingFriendReq={outgoingFriendReq} setOutFriendReq={setOutFriendReq} currentUser={currentUser}/>
+                    <DisplayIncomingRequests incomingFriendReq={incomingFriendReq} setInFriendReq={setInFriendReq} currentUser={currentUser}/>
+                </div>
+            </main>
         </>
     );
 }
@@ -40,10 +45,13 @@ function SearchUsers ({searchBarInput, setSearchBarInput, currentUser}) {
     return (
         <>
             <form id="add-friend-form" onSubmit={addFriendFunction}>
-                <input id="user-search-bar" maxLength={30} type="text" placeholder="Search Username/ID" value={searchBarInput} onChange={(e) => setSearchBarInput(e.target.value)}/>
-                <button type="submit" id="send-req-btn">Send Friend Request</button>
+                <div id="friend-search-container">
+                    <input id="user-search-bar" maxLength={30} type="text" placeholder="Search Username/ID" value={searchBarInput} onChange={(e) => setSearchBarInput(e.target.value)}/>
+                    <button type="submit" id="send-req-btn">Send Friend Request</button>
+                </div>
+                <p id="display-msg">{displayMsg}</p>
             </form>
-            <p id="display-msg">{displayMsg}</p>
+            
         </>
 
     );
@@ -70,6 +78,11 @@ function DisplayCurrentFriends ({currentFriends, setCurrentFriends, currentUser}
         return () => clearInterval(intervalId);
     }, [currentUser?.id, currentFriends]);
 
+    useEffect(() => {
+        if(!currentUser?.id) return;
+        getCurrentFriends();
+    }, [currentUser?.id, currentFriends])
+
     const friendsList = [];
 
     function unfriendFunction (friend_id, other_user_username, other_user_id) {
@@ -88,7 +101,7 @@ function DisplayCurrentFriends ({currentFriends, setCurrentFriends, currentUser}
         const friend = currentFriends[i];
         // each friend is an object {username, user_id, friend_id}
         friendsList.push(
-            <li key={friend.friend_id}>{friend.username} ID: {friend.user_id}
+            <li className='friends-li' key={friend.friend_id}>{friend.username} ID: {friend.user_id}
                 <button className="unfriend-btn" onClick={() =>
                     unfriendFunction(friend.friend_id, friend.username, friend.user_id)
                 }> Unfriend </button>
@@ -97,7 +110,7 @@ function DisplayCurrentFriends ({currentFriends, setCurrentFriends, currentUser}
     }
     return (
         <div id="current-friends-list"> 
-            <h1>Current Friends:</h1>
+            <h1 className='friends-header'>Current Friends:</h1>
             <ul>
                 {friendsList}
             </ul>
@@ -128,6 +141,10 @@ function DisplayOutgoingRequests ({outgoingFriendReq, setOutFriendReq, currentUs
         return () => clearInterval(intervalId);
     }, [currentUser?.id, outgoingFriendReq]);
 
+    useEffect(() => {
+        if(!currentUser?.id) return;
+        getOutgoingRequests();
+    }, [currentUser?.id, outgoingFriendReq])
 
     function cancelRequest (friend_id, receiver_id, receiver_username) {
         fetch("http://localhost:3000/friends/cancel", {
@@ -146,7 +163,7 @@ function DisplayOutgoingRequests ({outgoingFriendReq, setOutFriendReq, currentUs
     for (let i = 0; i < outgoingFriendReq.length; i++) {
         const request = outgoingFriendReq[i];
         outgoingReq.push(
-            <li key={request.friend_id}>{request.username} ID: {request.user_id}
+            <li className='friends-li' key={request.friend_id}>{request.username} ID: {request.user_id}
                 <button className="cancel-req-btn" onClick={() =>
                     cancelRequest(request.friend_id, request.user_id, request.username)
                 }> Cancel </button>
@@ -156,7 +173,7 @@ function DisplayOutgoingRequests ({outgoingFriendReq, setOutFriendReq, currentUs
 
     return (
         <div id="outgoing-req-list"> 
-            <h1>Outgoing Friend Requests:</h1>
+            <h1 className='friends-header'>Outgoing Requests:</h1>
             <ul>
                 {outgoingReq}
             </ul>
@@ -186,6 +203,11 @@ function DisplayIncomingRequests ({incomingFriendReq, setInFriendReq, currentUse
 
         return () => clearInterval(intervalId);
     }, [currentUser?.id, incomingFriendReq]);
+
+    useEffect(() => {
+        if(!currentUser?.id) return;
+        getIncomingReq();
+    }, [currentUser?.id, incomingFriendReq])
 
     function rejectRequest (friend_id, sender_username, sender_id) {
         fetch("http://localhost:3000/friends/reject", {
@@ -217,19 +239,21 @@ function DisplayIncomingRequests ({incomingFriendReq, setInFriendReq, currentUse
         const request = incomingFriendReq[i];
 
         incomingReq.push(
-            <li key={request.friend_id}>{request.username} ID: {request.user_id}
-                <button className="reject-req-btn" onClick={() =>
-                    rejectRequest(request.friend_id, request.username, request.user_id)
-                }> Reject </button>
-                <button className="accept-req-btn" onClick={() =>
-                    acceptRequest(request.friend_id, request.username, request.user_id)
-                }> Accept </button>
+            <li className='friends-li'  key={request.friend_id}>{request.username} ID: {request.user_id}
+                <div className='incoming-friends-btn-container'>
+                    <button className="reject-req-btn" onClick={() =>
+                        rejectRequest(request.friend_id, request.username, request.user_id)
+                    }> Reject </button>
+                    <button className="accept-req-btn" onClick={() =>
+                        acceptRequest(request.friend_id, request.username, request.user_id)
+                    }> Accept </button>
+                </div>
             </li>
         );
     }
 
     return (<div id="incoming-req-list"> 
-            <h1>Incoming Friend Requests:</h1>
+            <h1 className='friends-header'>Incoming Requests:</h1>
             <ul>
                 {incomingReq}
             </ul>

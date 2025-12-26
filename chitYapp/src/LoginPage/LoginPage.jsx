@@ -50,17 +50,17 @@ function LoginPage ({setLoginStatus, setCurrentUser}) {
             
     return (
         <>
-            <h1>ChitYapp</h1>
-            <main>
+            <h1 className='title-login'>ChitYapp</h1>
+            <main className='main-login'>
                 {displayLogin ? loginSection : registerSection}
                 
                 <p id="display-msg">{displayMessage}</p>
                 
                 {displayLogin ? 
-                <p>Register <button onClick={() => 
+                <p>Register <button className='inline-btn-login' onClick={() => 
                     {switchLoginDisplay(false) 
                     resetAllFields()}}>here</button></p> :
-                <p>Login <button onClick={() => 
+                <p>Login <button className='inline-btn-login' onClick={() => 
                 {switchLoginDisplay(true)
                 resetAllFields()
                 }}>here</button></p>}
@@ -96,17 +96,17 @@ function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPas
     }   
     return (
         <>
-            <h2>Login</h2>
-            <form onSubmit={handleUserLogin}>
+            <h2 className='login-header'>Login</h2>
+            <form className='form-login' onSubmit={handleUserLogin}>
                 <div className='login-input-container'>
-                    <input placeholder="Username" id="login-username" type="text" maxLength={30} value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)}/>
+                    <input className="input-login" placeholder="Username" id="login-username" type="text" maxLength={30} value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)}/>
                 </div>
 
                 <div className='login-input-container'>
-                    <input placeholder='Password' id="login-password" type="text" maxLength={30} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
+                    <input className="input-login" placeholder='Password' id="login-password" type="text" maxLength={30} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
                 </div>
 
-                <button id="login-btn" type="submit">Login</button>
+                <button className="login-btn" id="login-btn" type="submit">Login</button>
             </form>
 
         </>
@@ -157,28 +157,28 @@ function UserRegister ({registerUsername, setRegisterUsername, registerPassword,
     }   
     return (
         <>
-            <h2>Register</h2>
-            <form onSubmit={handleUserRegister}>
+            <h2 className='login-header'>Register</h2>
+            <form className='form-login' onSubmit={handleUserRegister}>
 
                 <div className='register-input-container'>
-                    <input placeholder="Username" id="register-username" type="text" maxLength={30} value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)}/>
+                    <input className="input-login" placeholder="Username" id="register-username" type="text" maxLength={30} value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <input placeholder="Email" id="register-email" type="text" maxLength={225} value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)}/>
+                    <input className="input-login" placeholder="Email" id="register-email" type="text" maxLength={225} value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <input placeholder="Password" id="register-password" type="text" maxLength={30} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)}/>
+                    <input className="input-login" placeholder="Password" id="register-password" type="text" maxLength={30} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <input placeholder="Confirm Password" id="register-password-confirm" type="text" maxLength={30} value={confirmRegisterPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
+                    <input className="input-login" placeholder="Confirm Password" id="register-password-confirm" type="text" maxLength={30} value={confirmRegisterPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
                 </div>
 
                 
 
-                <button id="register-btn" type="submit">Register</button>
+                <button className="login-btn" id="register-btn" type="submit">Register</button>
             </form>
 
         </>
