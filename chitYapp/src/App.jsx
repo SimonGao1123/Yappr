@@ -4,7 +4,7 @@ import './App.css'
 import LoginPage from './LoginPage/LoginPage.jsx';
 import FriendsPage from './FriendsPage/FriendsPage.jsx';
 
-function handleLogOut (setCurrentUser, setLoginStatus) {
+function handleLogOut (setCurrentUser, setLoginStatus, setDisplay) {
   fetch("http://localhost:3000/userLogins/logout", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -18,6 +18,7 @@ function handleLogOut (setCurrentUser, setLoginStatus) {
 
   setCurrentUser(null);
   setLoginStatus(true); 
+  setDisplay(true);
 }
 function App() {
     // LOGIN PAGE: 
@@ -28,6 +29,10 @@ function App() {
     const [currentFriends, setCurrentFriends] = useState([]); // holds {username, user_id, friend_id}
     const [outgoingFriendReq, setOutFriendReq] = useState([]);
     const [incomingFriendReq, setInFriendReq] = useState([]); 
+
+    // CHATS PAGE:
+    const [displayChatsOrFriends, setDisplay] = useState(true); // if false then display friends
+
     
 
 
@@ -52,28 +57,54 @@ function App() {
     
     console.log("Curr user: ", currentUser);
 
-    const TEMPORARYPAGE = (
+    const MAIN_PAGE = (
       <>
-        {currentUser ? <p>Welcome {currentUser.username}, id: {currentUser.id}</p> : <></>}
-        <button onClick={() => handleLogOut(setCurrentUser, setLoginStatus)}>Logout</button>
-        <FriendsPage
-          currentFriends={currentFriends}
-          setCurrentFriends={setCurrentFriends}
-          outgoingFriendReq={outgoingFriendReq}
-          setOutFriendReq={setOutFriendReq}
-          incomingFriendReq={incomingFriendReq}
-          setInFriendReq={setInFriendReq}
-          currentUser={currentUser}
-        />
+        <NavBar 
+        setCurrentUser={setCurrentUser} 
+        setLoginStatus={setLoginStatus} 
+        setDisplay={setDisplay}
+        displayChatsOrFriends={displayChatsOrFriends}/>
+
+        <main id="app-main-section">
+          {displayChatsOrFriends ? 
+          <p>Temporary Chats Page</p> 
+          
+          :
+          
+          <FriendsPage
+            currentFriends={currentFriends}
+            setCurrentFriends={setCurrentFriends}
+            outgoingFriendReq={outgoingFriendReq}
+            setOutFriendReq={setOutFriendReq}
+            incomingFriendReq={incomingFriendReq}
+            setInFriendReq={setInFriendReq}
+            currentUser={currentUser}
+          />}
+          {currentUser ? 
+          <div id="user-info-container"><p id="user-info">Welcome {currentUser.username}, id: {currentUser.id}</p></div> : <></>}
+        </main>
         
       </>
     );
 
   return (
     <>
-        {currentlyLoggingIn ? <LoginPage setCurrentUser={setCurrentUser} setLoginStatus={setLoginStatus}/> : TEMPORARYPAGE}
+        {currentlyLoggingIn ? <LoginPage setCurrentUser={setCurrentUser} setLoginStatus={setLoginStatus}/> : MAIN_PAGE}
         
     </>
+  );
+}
+function NavBar ({setCurrentUser, setLoginStatus, setDisplay, displayChatsOrFriends}) {
+  return (
+  <>
+    <div id="top-bar">
+      <nav>
+        <button className={`nav-btn ${displayChatsOrFriends?"active-tab":""}`} onClick={() => setDisplay(true)} id="nav-chats-btn">Chats</button>
+        <button className={`nav-btn ${!displayChatsOrFriends?"active-tab":""}`} onClick={() => setDisplay(false)} id="nav-friends-btn">Friends</button>
+      </nav>
+      <button className="nav-btn" id="logout-btn" onClick={() => handleLogOut(setCurrentUser, setLoginStatus, setDisplay)}>Logout</button>
+    </div>
+  </>  
   );
 }
 

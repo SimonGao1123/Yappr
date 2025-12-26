@@ -1,0 +1,48 @@
+#app-main-section {
+    width: 95vw;
+    height: 92vh;                     
+    margin: 0 auto;
+    background-color: white;
+    border-radius: 10px;
+    box-sizing: border-box;
+    padding: 1vw;
+}
+.active-tab {
+    background: linear-gradient(135deg, #4f8cff, #2b6cff); /*TEMPORARY*/
+
+}
+.nav-btn {
+    width: 20vw;
+    border-radius: 10px 10px 0 0;
+}
+#top-bar {
+    width: 88vw;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+}
+nav {
+    display: flex;
+    align-items: center;
+    gap: 2vw;
+}
+#user-info {
+    display: inline;
+    
+    text-align: center;
+
+}
+#user-info-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 3.6vh;
+    left: 2.5vw;
+    border-bottom-left-radius: 10px;
+    width: 15vw;
+    height: 7vh;
+    overflow: scroll;
+    background-color: rgb(155, 155, 155);
+    padding: 0 10px;
+}
