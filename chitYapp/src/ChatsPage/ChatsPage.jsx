@@ -11,12 +11,12 @@ function ChatsPage ({currentUser, currentFriends}) {
             <button id="show-create-chat-popup" onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
             {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay}/> : <></>}
 
-            <DisplayChats currentUser={currentUser} allChats={allChats} setAllChats={setAllChats}/>
+            <DisplayChats currentUser={currentUser} allChats={allChats} setAllChats={setAllChats} currentFriends={currentFriends}/>
         </>
     )
 }
 
-function DisplayChats ({currentUser, allChats, setAllChats}) {
+function DisplayChats ({currentUser, allChats, setAllChats, currentFriends}) {
     const [selectedChat, setSelectedChat] = useState(null); // holds {chat object}
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -30,6 +30,25 @@ function DisplayChats ({currentUser, allChats, setAllChats}) {
 
         return () => clearInterval(intervalId);
     }, [currentUser?.id]);
+    useEffect(() => {
+        if (!currentUser?.id) return;
+
+        // initial fetch
+        getChatData(currentUser.id, setAllChats);
+
+    }, [currentUser?.id, allChats]);
+
+    useEffect(() => {
+        if (!selectedChat) return;
+
+        const updatedChat = allChats.find(
+            chat => chat.chat_id === selectedChat.chat_id
+        ); // once allChat updates then selectedChat must also update, so that buttons with users update live
+
+        if (updatedChat) {
+            setSelectedChat(updatedChat);
+        }
+    }, [allChats]);
 
     const chat_list = [];
 
@@ -42,6 +61,10 @@ function DisplayChats ({currentUser, allChats, setAllChats}) {
             className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""}`}
             >
                 <p>{chat_name}</p>
+                <button id="leave-btn" onClick={() => leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id)}>Leave</button>
+                {chat.creator_id===currentUser.id ? 
+                <button id="delete-chat-btn" onClick={() => deleteChat(currentUser.id, chat.chat_id, chat.creator_id)}>Delete Chat</button> 
+                : <></>}
             </li>
         );
     }
@@ -60,6 +83,7 @@ function DisplayChats ({currentUser, allChats, setAllChats}) {
                     userList={selectedChat.userList}
                     chat_id={selectedChat.chat_id}   
                     currentUser={currentUser}
+                    currentFriends={currentFriends}
                 /> 
                 
                 : <></>}
@@ -68,9 +92,8 @@ function DisplayChats ({currentUser, allChats, setAllChats}) {
     );
 
 }
-
 // TODO:
-function ChatLayout ({creator_id, creator_username, chat_name, userList, chat_id, currentUser}) {
+function ChatLayout ({creator_id, creator_username, chat_name, userList, chat_id, currentUser, currentFriends}) {
     
     return (
         <div id="chat-layout">
@@ -80,21 +103,23 @@ function ChatLayout ({creator_id, creator_username, chat_name, userList, chat_id
                 creator_id={creator_id}
                 creator_username={creator_username}
                 currentUser={currentUser}
+                currentFriends={currentFriends}
             />
         </div>
         
     );
 }
-function UsersLayout ({chat_id, userList, creator_id, creator_username, currentUser}) {
+function UsersLayout ({chat_id, userList, creator_id, creator_username, currentUser, currentFriends}) {
     // userList contains array of {friend_id (could be null), user_id, status, username}
     const userDisplay = [];
 
+    const [addMembersDisplay, setAddMembersDisplay] = useState(false);
+    
     for (const user of userList) {
         const {friend_id, user_id, status, username} = user;
         let friendBtns;
 
         if (user_id !== currentUser.id) {    
-            console.log(username + status);
             
             if (status==="friends") {
                 friendBtns = "Friends";
@@ -106,7 +131,7 @@ function UsersLayout ({chat_id, userList, creator_id, creator_username, currentU
                 );
             } else if (status === "incoming") {
                 friendBtns = (
-                    <div id="chat-incoming-req-btns">
+                    <div className="chat-incoming-req-btns">
                     <button className="reject-req-btn" onClick={() =>
                             rejectRequest(friend_id, username, user_id)
                         }> Reject </button>
@@ -117,7 +142,7 @@ function UsersLayout ({chat_id, userList, creator_id, creator_username, currentU
                 );
             } else {
                 friendBtns = (
-                    <button id="send-friend-req-btn" onClick={() => 
+                    <button className="send-friend-req-btn" onClick={() => 
                         sendRequest(currentUser.id,user_id)
                     }>
                         Send Request
@@ -125,19 +150,120 @@ function UsersLayout ({chat_id, userList, creator_id, creator_username, currentU
                 )
             }
         }
-        
+
         userDisplay.push(
             <li key={`${chat_id}-${user.username}`} className='chat-user-list'>
-                {`${creator_id===user_id?"👑":""}`}{username}
+                {`${creator_id===user_id?"👑":""}`}{username}{currentUser.id===user_id?"(You)":""}
                 {friendBtns}
+                {creator_id===currentUser.id && currentUser.id !== user_id?
+                <button className="kick-btn" onClick={()=>kickUser(creator_id, currentUser.id, currentUser.username, user_id, username, chat_id)}>Kick</button>:<></>}
             </li>
         );
     }
     return (
         <ul>
             {userDisplay}
+            <button id="add-members-btn" onClick={() => setAddMembersDisplay(true)}>Add members</button>
+
+            {addMembersDisplay?<AddMembersPopup setAddMembersDisplay={setAddMembersDisplay} userList={userList} currentFriends={currentFriends} chat_id={chat_id} currentUser={currentUser}/>:<></>}
         </ul>
     );
+}
+
+function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_id, currentUser }) {
+    const [addedFriends, setAddedFriends] = useState([]);
+
+    // Only show friends who are NOT already in the chat
+    const selectableFriends = currentFriends.filter(
+        friend => !userList.some(user => user.user_id === friend.user_id)
+    );
+
+    return (
+        <div id="add-friends-container">
+            <ul>
+                {selectableFriends.map(friend => {
+                    const isSelected = addedFriends.some(f => f.friend_id === friend.friend_id);
+
+                    return (
+                        <li
+                            key={`add-members-${friend.friend_id}`}
+                            className={`add-members ${isSelected ? "selected" : ""}`}
+                            onClick={() => {
+                                if (isSelected) {
+                                    setAddedFriends(
+                                        addedFriends.filter(f => f.friend_id !== friend.friend_id)
+                                    );
+                                } else {
+                                    setAddedFriends([...addedFriends, friend]);
+                                }
+                            }}
+                        >
+                            {friend.username}
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <button
+                id="add-members-btn"
+                onClick={() => addMembers(currentUser.username, currentUser.id, addedFriends, chat_id)}
+            >
+                Add
+            </button>
+
+            <button id="close-add-members-popup" onClick={() => setAddMembersDisplay(false)}>X</button>
+        </div>
+    );
+}
+
+function addMembers (username, user_id, addedFriends, chat_id) {
+    fetch("http://localhost:3000/chats/addToChat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username, user_id, addedFriends, chat_id})
+    }).then(async response => {
+        const parsed = await response.json();
+        console.log(parsed.message);
+    }).catch(err => {
+        console.log(err);
+    })   
+}
+function kickUser (creator_id, user_id, user_username, kicked_id, kicked_username, chat_id) {
+    fetch("http://localhost:3000/chats/kick", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({creator_id, user_id, user_username, kicked_id, kicked_username, chat_id})
+    }).then(async response => {
+        const parsed = await response.json();
+        console.log(parsed.message);
+    }).catch(err => {
+        console.log(err);
+    })
+}
+
+function deleteChat (user_id, chat_id, creator_id) {
+    fetch("http://localhost:3000/chats/deleteChat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id, chat_id, creator_id})
+    }).then(async response => {
+        const parsed = await response.json();
+        console.log(parsed.message);
+    }).catch(err => {
+        console.log(err);
+    })
+}
+function leaveChat (user_id, username, chat_id, creator_id) {
+    fetch("http://localhost:3000/chats/leaveChat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id, username, chat_id, creator_id})
+    }).then(async response => {
+        const parsed = await response.json();
+        console.log(parsed.message);
+    }).catch(err => {
+        console.log(err);
+    })
 }
 function sendRequest (sender_id, receiver_id) {
     fetch("http://localhost:3000/friends/sendFriendRequest", {
