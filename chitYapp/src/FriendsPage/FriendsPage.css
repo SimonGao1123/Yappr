@@ -19,27 +19,27 @@
 
 /* ACCEPT (GREEN) */
 .accept-req-btn {
-    background: linear-gradient(135deg, #0B8F3C 0%, #2ECC71 100%);
+    background: linear-gradient(135deg, #17d8ff 0%, #00b3a7 100%);
 }
 .accept-req-btn:hover, #send-req-btn:hover {
-    background: linear-gradient(135deg, #0b8136 0%, #29b161 100%);
+    background: linear-gradient(135deg, #12a7c5 0%, #00887f 100%);
 }
 .accept-req-btn:active, #send-req-btn:active {
-    background: linear-gradient(135deg, #086028 0%, #20884b 100%);
+    background: linear-gradient(135deg, #0b6a7d 0%, #01554f 100%);
 }
 
 /* REJECT / CANCEL / UNFRIEND (RED) */
 .unfriend-btn, .cancel-req-btn,
 .reject-req-btn {
-    background: linear-gradient(135deg, #B71C1C 0%, #FF3B30 100%);
+    background: linear-gradient(135deg, #8b1cb7 0%, #c92466 100%);
 }
 .unfriend-btn:hover, .cancel-req-btn:hover,
 .reject-req-btn:hover {
-    background: linear-gradient(135deg, #941616 0%, #c92d25 100%);
+    background: linear-gradient(135deg, #6e1690 0%, #8a1946 100%);
 }
 .unfriend-btn:active, .cancel-req-btn:active,
 .reject-req-btn:active {
-    background: linear-gradient(135deg, #6f1010 0%, #9b241d 100%);
+    background: linear-gradient(135deg, #420d57 0%, #75143b 100%);
 }
 
 /* ===== PAGE GRID =====
@@ -50,13 +50,12 @@
     display: grid;
     grid-template-columns: 1fr 1fr; /* change 360px to 1fr if you want fluid right column */
     grid-template-rows: auto 1fr;     /* search row auto, content row fills remaining height */
-    gap: 10px;
+    gap: 15px;
     align-items: start;
     min-width: 0; /* avoid overflowing due to long content */
     box-sizing: border-box;
     width: 100%;
     height: 100%;                     
-    background-color: white;
     border-radius: 10px;
 }
 
@@ -74,6 +73,7 @@
     grid-row: 1;
     display: block; /* natural height */
     margin: 0;
+    padding-top: 10px;
 }
 
 /* inner search row */
@@ -99,9 +99,11 @@
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    background: linear-gradient(135deg, #0B8F3C 0%, #2ECC71 100%);
+    background: linear-gradient(135deg, #17d8ff 0%, #00b3a7 100%);
     color: #fff;
-    font-weight: 600;
+    font-size: 0.8em;
+    font-weight: bold;
+    
 }
 
 #display-msg {
@@ -120,6 +122,7 @@
     background-color: #ffffff;
     border-radius: 10px;
     box-shadow: 0 6px 18px rgba(17,24,39,0.06);
+    max-height: 68vh;
 }
 
 /* ===== RIGHT COLUMN WRAPPER =====
@@ -130,10 +133,10 @@
   grid-row: 1 / span 2;  /* occupy both rows so wrapper fills full right column height */
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 15px;
   height: 100%;
   min-height: 0; /* allow children to shrink and scroll */
-  padding: 0;    /* child panels have their own padding */
+  padding-top: 3px;    /* child panels have their own padding */
 }
 
 /* children (outgoing/incoming) each take equal height and scroll */

@@ -1,0 +1,9 @@
+.selected {
+    background-color: yellow;
+}
+.selected-chat {
+    background-color: green;
+}
+.create-chat-friends {
+    list-style: none;
+}

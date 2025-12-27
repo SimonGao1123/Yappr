@@ -1,5 +1,6 @@
 import express from 'express';
 import db from '../database.js';
+import { use } from 'react';
 
 const router = express.Router();
 
@@ -160,13 +161,37 @@ router.get("/displayChats/:user_id", async (req, res) => {
 
             const allUsers = users[0]; 
 
-            // obtain username of that user
+            // obtain username of that user and the status with the user, (friends, Pending Incoming Req, Pending Outgoing Req, None)
             for (let i = 0; i < allUsers.length; i++) {
                 const username = await db.promise().query(
                     'SELECT username FROM Users WHERE user_id = ?',
                     [allUsers[i].user_id]
                 );
 
+                
+                const checkStatus = await db.promise().query(
+                    'SELECT status, sender_id, receiver_id, friend_id FROM Friends WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)',
+                    [user_id, allUsers[i].user_id, allUsers[i].user_id, user_id]
+                ) // if they already are friends only one possibility 
+                let status = "none";
+                let friend_id = null;
+
+                if (checkStatus[0].length > 0) {
+                    const row = checkStatus[0][0];
+                    friend_id = row.friend_id;
+
+                    if (row.status === "accepted") {
+                        status = "friends";
+                    } else if (row.status === "pending" && row.sender_id === Number(user_id)) {
+                        status = "outgoing";
+                    } else if (row.status === "pending" && row.receiver_id === Number(user_id)) {
+                        status = "incoming";
+                    }
+                }
+
+                allUsers[i].friend_id = friend_id;
+                
+                allUsers[i].status = status;
                 allUsers[i].username = username[0][0].username;
                 // now all Users stores array of objects of {username, user_id}
             }

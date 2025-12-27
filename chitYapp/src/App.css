@@ -6,6 +6,8 @@
     border-radius: 10px;
     box-sizing: border-box;
     padding: 1vw;
+    background-color: rgb(203, 255, 251);
+
 }
 .active-tab {
     background: linear-gradient(135deg, #4f8cff, #2b6cff); /*TEMPORARY*/

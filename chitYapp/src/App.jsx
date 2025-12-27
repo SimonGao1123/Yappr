@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import LoginPage from './LoginPage/LoginPage.jsx';
 import FriendsPage from './FriendsPage/FriendsPage.jsx';
+import ChatsPage from './ChatsPage/ChatsPage.jsx';
 
 function handleLogOut (setCurrentUser, setLoginStatus, setDisplay) {
   fetch("http://localhost:3000/userLogins/logout", {
@@ -67,7 +68,10 @@ function App() {
 
         <main id="app-main-section">
           {displayChatsOrFriends ? 
-          <p>Temporary Chats Page</p> 
+          <ChatsPage
+          currentUser={currentUser}
+          currentFriends={currentFriends}
+          />
           
           :
           

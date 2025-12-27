@@ -10,10 +10,10 @@ CREATE TABLE Users (
 );
 
 -- @block
-INSERT INTO Users (username, password, email) VALUES ("simon1", "1", "1"); 
-INSERT INTO Users (username, password, email) VALUES ("judy", "2", "2"); 
-INSERT INTO Users (username, password, email) VALUES ("alvin", "3", "3"); 
-INSERT INTO Users (username, password, email) VALUES ("gordon", "4", "4"); 
+INSERT INTO Users (username, password, email) VALUES ("simon11", "1", "11"); 
+INSERT INTO Users (username, password, email) VALUES ("judy1", "2", "21"); 
+INSERT INTO Users (username, password, email) VALUES ("alvin1", "3", "31"); 
+INSERT INTO Users (username, password, email) VALUES ("gordon1", "4", "41"); 
 
 -- @block 
 DROP TABLE Users;
