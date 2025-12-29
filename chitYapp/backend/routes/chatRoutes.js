@@ -208,7 +208,30 @@ router.get("/displayChats/:user_id", async (req, res) => {
                 [rowChatData[0].creator_id]
             );
 
-            currChat.creator_id = rowChatData[0].creator_id;
+            // GET if unread messages (unread = true means unread messages unread = false means all messages read)
+            let ifUnread = false;
+            // select most up to date message id and compare to user's latest read message
+            const mostUpToDateMsg = await db.promise().query(
+                'SELECT message_id FROM Messages WHERE chat_id=? AND deleted=0 AND sender_id!=? ORDER BY message_id DESC LIMIT 1',
+                [chat.chat_id, user_id]
+            ); // dont count if most up to date is from the user themselves
+
+            const rowsUpToDateMsg = mostUpToDateMsg[0];
+            if (rowsUpToDateMsg.length !== 0) {
+                // if no messages in chat then ifUnread = false
+                const userLatest = await db.promise().query(
+                    'SELECT last_seen_message_id FROM Chat_Users WHERE user_id=? AND chat_id=?',
+                    [user_id, chat.chat_id]
+                );
+
+                if (userLatest[0][0].last_seen_message_id < rowsUpToDateMsg[0].message_id) {
+                    ifUnread = true; // has unread messages if up to date message is larger id
+                }
+            }
+
+            currChat.unread = ifUnread;
+
+            currChat.creator_id = rowChatData[0].creator_id;    
             currChat.creator_username = usernameLeader[0][0].username;
             currChat.chat_name = rowChatData[0].chat_name;
 
@@ -217,6 +240,11 @@ router.get("/displayChats/:user_id", async (req, res) => {
 
             chatsData.push(currChat);
         }
+
+        // sort chatsData such that all unread chats are at the front
+        chatsData.sort((a, b) => {
+            return (b.unread === true) - (a.unread === true);
+        }); // puts unread = true first
 
         return res.status(201).json({success: true, message: "Successfully retreived user chats",
                 chat_data: chatsData

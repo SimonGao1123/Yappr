@@ -10,10 +10,10 @@ CREATE TABLE Users (
 );
 
 -- @block
-INSERT INTO Users (username, password, email) VALUES ("simon11", "1", "11"); 
-INSERT INTO Users (username, password, email) VALUES ("judy1", "2", "21"); 
-INSERT INTO Users (username, password, email) VALUES ("alvin1", "3", "31"); 
-INSERT INTO Users (username, password, email) VALUES ("gordon1", "4", "41"); 
+INSERT INTO Users (username, password, email) VALUES ("simon", "1", "11"); 
+INSERT INTO Users (username, password, email) VALUES ("judy", "2", "21"); 
+INSERT INTO Users (username, password, email) VALUES ("alvin", "3", "31"); 
+INSERT INTO Users (username, password, email) VALUES ("gordon", "4", "41"); 
 
 -- @block 
 DROP TABLE Users;
@@ -90,6 +90,7 @@ CREATE TABLE Chat_Users (
     chat_id INT NOT NULL,
     user_id INT NOT NULL,
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_message_id INT NOT NULL DEFAULT 0,
     -- connects a user to a chat through id's
     PRIMARY KEY (chat_user_id),
     CONSTRAINT fk_chat_id
@@ -108,3 +109,32 @@ SELECT * FROM Chat_Users;
 
 DROP TABLE Chat_Users;
 
+
+-- @block
+CREATE TABLE Messages (
+    message_id INT AUTO_INCREMENT,
+    chat_id INT NOT NULL,
+    sender_id INT NOT NULL,
+    message TEXT NOT NULL,
+    sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted BOOL DEFAULT FALSE,
+
+    PRIMARY KEY (message_id),
+
+    CONSTRAINT fk_msgs_chat_id
+        FOREIGN KEY (chat_id)
+        REFERENCES Chats(chat_id),
+    
+    CONSTRAINT fk_sender_id
+        FOREIGN KEY (sender_id)
+        REFERENCES Users(user_id)
+);
+-- @block
+DROP TABLE Messages;
+
+-- @block
+SELECT * FROM Users;
+SELECT * FROM Friends;
+SELECT * FROM Chats;
+SELECT * FROM Chat_Users;
+SELECT * FROM Messages;

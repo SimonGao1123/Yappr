@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useEffect } from 'react';
 import './ChatsPage.css';
+import MessagingSection from './MessagingSection/MessagingSection.jsx';
 
 function ChatsPage ({currentUser, currentFriends}) {
     // currentFriends holds array of {user_id, username, friend_id}
@@ -23,19 +24,12 @@ function DisplayChats ({currentUser, allChats, setAllChats, currentFriends}) {
 
         // initial fetch
         getChatData(currentUser.id, setAllChats);
-
+        
         const intervalId = setInterval(() => {
             getChatData(currentUser.id, setAllChats);
         }, 2000);
 
         return () => clearInterval(intervalId);
-    }, [currentUser?.id]);
-    useEffect(() => {
-        if (!currentUser?.id) return;
-
-        // initial fetch
-        getChatData(currentUser.id, setAllChats);
-
     }, [currentUser?.id, allChats]);
 
     useEffect(() => {
@@ -45,22 +39,32 @@ function DisplayChats ({currentUser, allChats, setAllChats, currentFriends}) {
             chat => chat.chat_id === selectedChat.chat_id
         ); // once allChat updates then selectedChat must also update, so that buttons with users update live
 
+        
         if (updatedChat) {
             setSelectedChat(updatedChat);
         }
     }, [allChats]);
 
+    useEffect(() => {
+        // reads
+        if (!selectedChat) return;
+        if (!selectedChat.unread) return;
+        readMessages(selectedChat.chat_id, currentUser.id);
+        
+
+    }, [selectedChat]);
+    
     const chat_list = [];
 
     for (const chat of allChats || []) {
-        // each chat is object {creator_id, creator_username, chat_name, userList: [{username, user_id, status, friend_id (null if no friend_id)}], chat_id}
+        // each chat is object {unread, creator_id, creator_username, chat_name, userList: [{username, user_id, status, friend_id (null if no friend_id)}], chat_id}
         const {chat_name} = chat;
         chat_list.push(
             <li key={chat.chat_id}
             onClick={() => setSelectedChat(chat)}
             className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""}`}
             >
-                <p>{chat_name}</p>
+                <p>{chat_name} {chat.unread?"🔴 unread messages":""}</p>
                 <button id="leave-btn" onClick={() => leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id)}>Leave</button>
                 {chat.creator_id===currentUser.id ? 
                 <button id="delete-chat-btn" onClick={() => deleteChat(currentUser.id, chat.chat_id, chat.creator_id)}>Delete Chat</button> 
@@ -92,11 +96,16 @@ function DisplayChats ({currentUser, allChats, setAllChats, currentFriends}) {
     );
 
 }
-// TODO:
 function ChatLayout ({creator_id, creator_username, chat_name, userList, chat_id, currentUser, currentFriends}) {
     
+    // ONLY USERS SECTION SO FAR, NEED TO ADD MESSAGING SECTION IN A NEW FILE
     return (
         <div id="chat-layout">
+            <MessagingSection
+            currentUser={currentUser}
+            chat_id={chat_id}
+            />
+
             <UsersLayout
                 chat_id={chat_id}
                 userList={userList}
@@ -239,6 +248,18 @@ function kickUser (creator_id, user_id, user_username, kicked_id, kicked_usernam
     }).catch(err => {
         console.log(err);
     })
+}
+function readMessages (chat_id, user_id) {
+    fetch("http://localhost:3000/message/readMessages", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({chat_id, user_id})
+    }).then(async response => {
+        const parsed = await response.json();
+        console.log(parsed.message);
+    }).catch(err => {
+        console.log(err);
+    });
 }
 
 function deleteChat (user_id, chat_id, creator_id) {
