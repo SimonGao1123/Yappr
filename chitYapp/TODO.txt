@@ -1,12 +1,6 @@
 TO FINISH DEVELOPMENT: 
 
-- Style friends list
-
-- Style chats pages + fix date on messages (make it more readable)
-
-- Style create chats popup + add membets popup
-
-- Fix navbar (make settings tab and hide logout button)
+- Make settings tab + style it
 
 - Fix user identifier at bottom left of pages
 

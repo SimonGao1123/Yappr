@@ -240,29 +240,12 @@ router.get("/incomingRequests/:user_id", async(req, res) => {
     const user_id = req.params.user_id;
     try {
         // user is the receiver and returns all PENDING
-        const incomingReq = await db.promise().query(
-            'SELECT friend_id, sender_id FROM Friends WHERE receiver_id=? AND status="pending"',
+        const [rows] = await db.promise().query(
+            'SELECT f.friend_id, u.user_id, u.username FROM Friends f JOIN Users u ON f.sender_id=u.user_id WHERE receiver_id=? AND status="pending"',
             [user_id]
         );
-        const rowsIncomReq = incomingReq[0];
 
-        const allRequests = [];
-
-        for (const incoming of rowsIncomReq) {
-            const [rows] = await db.promise().query(
-                'SELECT username FROM Users WHERE user_id =?',
-                [incoming.sender_id]
-            );
-            allRequests.push(
-                {
-                    username: rows[0].username,
-                    user_id: incoming.sender_id,
-                    friend_id: incoming.friend_id
-                }
-            );
-        }
-
-        return res.status(200).json({success: true, message: "updated incoming friend requests list", incomingRequests: allRequests});
+        return res.status(200).json({success: true, message: "updated incoming friend requests list", incomingRequests: rows});
     } catch (err) {
         console.log("Error while displaying incoming friend requests: ", err);
         return res.status(500).json({success: false, message: "Internal server error"});
@@ -272,29 +255,12 @@ router.get("/outgoingRequests/:user_id", async (req, res) => {
     const user_id = req.params.user_id;
     try {
         // user is the sender and returns all PENDING
-        const outgoingReq = await db.promise().query(
-            'SELECT friend_id, receiver_id FROM Friends WHERE sender_id=? AND status="pending"',
+        const [rows] = await db.promise().query(
+            'SELECT f.friend_id, u.user_id, u.username FROM Friends f JOIN Users u ON f.receiver_id=u.user_id WHERE f.sender_id=? AND status="pending"',
             [user_id]
         );
-        const rowsOutReq = outgoingReq[0];
 
-        const allRequests = [];
-
-        for (const outgoing of rowsOutReq) {
-            const [rows] = await db.promise().query(
-                'SELECT username FROM Users WHERE user_id =?',
-                [outgoing.receiver_id]
-            );
-            allRequests.push(
-                {
-                    username: rows[0].username,
-                    user_id: outgoing.receiver_id,
-                    friend_id: outgoing.friend_id
-                }
-            );
-        }
-
-        return res.status(200).json({success: true, message: "updated outgoing friend requests list", outgoingRequests: allRequests});
+        return res.status(200).json({success: true, message: "updated outgoing friend requests list", outgoingRequests: rows});
     } catch (err) {
         console.log("Error while displaying outgoing friend requests: ", err);
         return res.status(500).json({success: false, message: "Internal server error"});

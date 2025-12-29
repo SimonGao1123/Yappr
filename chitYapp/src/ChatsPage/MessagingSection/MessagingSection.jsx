@@ -37,8 +37,8 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id}) {
 
         messageDisplay.push(
             <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""}`} key={message_id}>
-                <p className='msg-username-date'>{username} {sent_at}</p>
-                <p classname="msg-text">{message}</p>
+                <p className='msg-username-date'>{username} {formatDateTimeSmart(sent_at)}</p>
+                <p className="msg-text">{message}</p>
 
                 {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className='delete-msg-btn'>Delete</button>:<></>}
             </li>
@@ -55,11 +55,8 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id}) {
 
 }
 
-
 function SendMessageInput ({currentUser, chat_id}) {
     const [message, setMessage] = useState("");
-
-
 
     return (
         <div id="send-msg-input">
@@ -68,7 +65,27 @@ function SendMessageInput ({currentUser, chat_id}) {
         </div>
     );
 }
+function formatDateTimeSmart(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
 
+  const isSameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const options = {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  };
+
+  // Same day → just date + time (no weekday)
+  return date.toLocaleString("en-US", options);
+}
 function getPastMessages (user_id, setMessageData, chat_id) {
     fetch(`http://localhost:3000/message/getMessages/${user_id}`, {
         method: "GET"

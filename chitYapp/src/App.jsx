@@ -4,23 +4,8 @@ import './App.css'
 import LoginPage from './LoginPage/LoginPage.jsx';
 import FriendsPage from './FriendsPage/FriendsPage.jsx';
 import ChatsPage from './ChatsPage/ChatsPage.jsx';
+import Settings from './SettingsPage/Settings.jsx';
 
-function handleLogOut (setCurrentUser, setLoginStatus, setDisplay) {
-  fetch("http://localhost:3000/userLogins/logout", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        credentials: "include"
-      }).then(async response => {
-        const parsed = await response.json();
-        console.log(parsed);
-      }).catch(err => {
-        console.log("Error in logging out of session", err);
-      });
-
-  setCurrentUser(null); // removes data of login user
-  setLoginStatus(true); // returns to login page
-  setDisplay(true); // next time open automatically goes to chats
-}
 function App() {
     // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
@@ -32,9 +17,13 @@ function App() {
     const [incomingFriendReq, setInFriendReq] = useState([]); 
 
     // CHATS PAGE:
-    const [displayChatsOrFriends, setDisplay] = useState(true); // if false then display friends
-
-    
+    const [displayIndex, setDisplayIndex] = useState(0); 
+    /*
+    DISPLAY INDEX:
+    0 = chats page
+    1 = friends page
+    2 = settings page
+    */
 
     // runs every time refresh
     useEffect(() => {
@@ -63,18 +52,16 @@ function App() {
         <NavBar 
         setCurrentUser={setCurrentUser} 
         setLoginStatus={setLoginStatus} 
-        setDisplay={setDisplay}
-        displayChatsOrFriends={displayChatsOrFriends}/>
+        setDisplayIndex={setDisplayIndex}
+        displayIndex={displayIndex}/>
 
         <main id="app-main-section">
-          {displayChatsOrFriends ? 
+          {displayIndex===0?
           <ChatsPage
           currentUser={currentUser}
           currentFriends={currentFriends}
           />
-          
-          :
-          
+          : displayIndex===1?
           <FriendsPage
             currentFriends={currentFriends}
             setCurrentFriends={setCurrentFriends}
@@ -83,7 +70,15 @@ function App() {
             incomingFriendReq={incomingFriendReq}
             setInFriendReq={setInFriendReq}
             currentUser={currentUser}
-          />}
+          />
+          : displayIndex=== 2?
+          <Settings
+          setCurrentUser={setCurrentUser}
+          setLoginStatus={setLoginStatus}
+          setDisplayIndex={setDisplayIndex}
+          />
+          :
+          <></>}
           {currentUser ? 
           <div id="user-info-container"><p id="user-info">Welcome {currentUser.username}, id: {currentUser.id}</p></div> : <></>}
         </main>
@@ -98,15 +93,15 @@ function App() {
     </>
   );
 }
-function NavBar ({setCurrentUser, setLoginStatus, setDisplay, displayChatsOrFriends}) {
+function NavBar ({setCurrentUser, setLoginStatus, setDisplayIndex, displayIndex}) {
   return (
   <>
     <div id="top-bar">
       <nav>
-        <button className={`nav-btn ${displayChatsOrFriends?"active-tab":""}`} onClick={() => setDisplay(true)} id="nav-chats-btn">Chats</button>
-        <button className={`nav-btn ${!displayChatsOrFriends?"active-tab":""}`} onClick={() => setDisplay(false)} id="nav-friends-btn">Friends</button>
+        <button className={`nav-btn ${displayIndex===0?"active-tab":""}`} onClick={() => setDisplayIndex(0)} id="nav-chats-btn">Chats</button>
+        <button className={`nav-btn ${displayIndex===1?"active-tab":""}`} onClick={() => setDisplayIndex(1)} id="nav-friends-btn">Friends</button>
       </nav>
-      <button className="nav-btn" id="logout-btn" onClick={() => handleLogOut(setCurrentUser, setLoginStatus, setDisplay)}>Logout</button>
+      <button className="nav-btn" id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>Settings</button>
     </div>
   </>  
   );

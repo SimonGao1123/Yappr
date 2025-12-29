@@ -6,18 +6,24 @@ import MessagingSection from './MessagingSection/MessagingSection.jsx';
 function ChatsPage ({currentUser, currentFriends}) {
     // currentFriends holds array of {user_id, username, friend_id}
     const [createChatsDisplay, setCreateChatsDisplay] = useState(false);
+    const [addMembersDisplay, setAddMembersDisplay] = useState(false);
     const [allChats, setAllChats] = useState([]);
     return (
         <>
-            <button id="show-create-chat-popup" onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
             {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay}/> : <></>}
 
-            <DisplayChats currentUser={currentUser} allChats={allChats} setAllChats={setAllChats} currentFriends={currentFriends}/>
+            <DisplayChats 
+                addMembersDisplay={addMembersDisplay}
+                setAddMembersDisplay={setAddMembersDisplay}
+                currentUser={currentUser}
+                allChats={allChats}
+                setAllChats={setAllChats}
+                currentFriends={currentFriends}/>
         </>
     )
 }
 
-function DisplayChats ({currentUser, allChats, setAllChats, currentFriends}) {
+function DisplayChats ({addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends}) {
     const [selectedChat, setSelectedChat] = useState(null); // holds {chat object}
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -76,19 +82,30 @@ function DisplayChats ({currentUser, allChats, setAllChats, currentFriends}) {
     return (
         <>
         <main id="main-chat-page">
-            <ul id="chat-list">
-                {chat_list}
-            </ul>
+            <div id="chat-list-container">
+                <button id="show-create-chat-popup" onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
+                <ul id="chat-list">
+                    {chat_list}
+                </ul>
+            </div>
             {selectedChat ? 
+                <>
                 <ChatLayout
                     creator_id={selectedChat.creator_id}
-                    creator_username={selectedChat.creator_username}
                     chat_name={selectedChat.chat_name}
-                    userList={selectedChat.userList}
                     chat_id={selectedChat.chat_id}   
                     currentUser={currentUser}
-                    currentFriends={currentFriends}
                 /> 
+                <UsersLayout
+                    addMembersDisplay={addMembersDisplay}
+                    setAddMembersDisplay={setAddMembersDisplay}
+                    chat_id={selectedChat.chat_id}
+                    userList={selectedChat.userList}
+                    creator_id={selectedChat.creator_id}
+                    currentUser={currentUser}
+                    currentFriends={currentFriends}
+                />
+                </>
                 
                 : <></>}
         </main>
@@ -96,34 +113,24 @@ function DisplayChats ({currentUser, allChats, setAllChats, currentFriends}) {
     );
 
 }
-function ChatLayout ({creator_id, creator_username, chat_name, userList, chat_id, currentUser, currentFriends}) {
+function ChatLayout ({creator_id, chat_name, chat_id, currentUser}) {
     
-    // ONLY USERS SECTION SO FAR, NEED TO ADD MESSAGING SECTION IN A NEW FILE
     return (
+        
         <div id="chat-layout">
+            <p id="chat-name">{chat_name}</p>
             <MessagingSection
             currentUser={currentUser}
             chat_id={chat_id}
-            />
-
-            <UsersLayout
-                chat_id={chat_id}
-                userList={userList}
-                creator_id={creator_id}
-                creator_username={creator_username}
-                currentUser={currentUser}
-                currentFriends={currentFriends}
             />
         </div>
         
     );
 }
-function UsersLayout ({chat_id, userList, creator_id, creator_username, currentUser, currentFriends}) {
+function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userList, creator_id, currentUser, currentFriends}) {
     // userList contains array of {friend_id (could be null), user_id, status, username}
     const userDisplay = [];
 
-    const [addMembersDisplay, setAddMembersDisplay] = useState(false);
-    
     for (const user of userList) {
         const {friend_id, user_id, status, username} = user;
         let friendBtns;
@@ -131,7 +138,7 @@ function UsersLayout ({chat_id, userList, creator_id, creator_username, currentU
         if (user_id !== currentUser.id) {    
             
             if (status==="friends") {
-                friendBtns = "Friends";
+                friendBtns = " 👥";
             } else if (status === "outgoing") {
                 friendBtns = (
                     <button className="cancel-req-btn" onClick={() =>
