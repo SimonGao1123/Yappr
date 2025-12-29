@@ -9,7 +9,7 @@ router.get("/me", (req, res) => {
         return res.json({loggedIn: false});
     }
 
-    res.json({loggedIn: true, 
+    return res.json({loggedIn: true, 
         user: {
             username: req.session.username,
             id: req.session.userID
@@ -33,38 +33,34 @@ router.post("/logout", (req, res) => {
         });
 
         // Send success response
-        res.json({ success: true, message: "Logged out successfully" });
+        return res.json({ success: true, message: "Logged out successfully" });
     });
 });
 
 router.post("/login", async (req, res) => {
+    const {userOrEmail, password} = req.body;
+    if (!userOrEmail || !password) return res.status(401).json({message: `Invalid Username/Password`, success: false});
+
     try {
-        const {username, password} = req.body;
-        if (username && password) {
-            const [rows] = await db.promise().query(
-                "SELECT user_id, username, password FROM Users WHERE username = ?",
-            [username]
-            ); // selects all users with matched username
-            
+        
+        const [rows] = await db.promise().query(
+            "SELECT user_id, username, password FROM Users WHERE username = ? OR email=?",
+        [userOrEmail, userOrEmail]
+        ); // selects all users with matched username or email
 
-            if (rows.length === 0) {
-                res.status(401).json({message: "Username doesn't exist", success: false});
-            }
+        if (rows.length === 0) {
+            return res.status(401).json({message: "Username or Email doesn't exist", success: false});
+        }
 
-            const stored = rows[0].password;
-            if (comparePassword(password, stored)) {
-                req.session.userID = rows[0].user_id;
-                req.session.username = rows[0].username; // stores userId and username for session
+        const stored = rows[0].password;
+        if (comparePassword(password, stored)) {
+            req.session.userID = rows[0].user_id;
+            req.session.username = rows[0].username; // stores userId and username for session
 
-                // password matches the password associated with the user
-                res.status(201).json({message: `Successfully logged in as ${username}`, success: true, user: {username: username, id: rows[0].user_id}});
-            
-                
-            } else {
-                res.status(401).json({message: `Invalid Username/Password`, success: false});
-            }
+            // password matches the password associated with the user
+            return res.status(201).json({message: `Successfully logged in as ${rows[0].username}`, success: true, user: {username: rows[0].username, id: rows[0].user_id}});
         } else {
-            res.status(400).json({message: "Invalid Username/Password", success: false});
+            return res.status(401).json({message: `Invalid Username/Password`, success: false});
         }
     } catch (error) {
         console.log("Error occurred: ", error);
@@ -72,31 +68,30 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/register", async (req, res) => {
-    try {
-        const {username, password, email} = req.body;
-        if (username && password && email) {
+    const {username, password, email} = req.body;
 
-            const encryptedPass = encryptPassword(password);
-            await db.promise().query(
-                'INSERT INTO Users (username, password, email) VALUES (?, ?, ?)',
-                [username, encryptedPass, email]
-            );
-            res.status(201).json({message: `Successfully registered ${username}`, success: true});
-        } else {
-            res.status(400).json({message: "Invalid Username/Password/Email", success: false});
-        }
+    if (!username || !password || !email) return res.status(401).json({message: "Invalid username/password/email", success: false});
+
+    try {
+        const encryptedPass = encryptPassword(password);
+        await db.promise().query(
+            'INSERT INTO Users (username, password, email) VALUES (?, ?, ?)',
+            [username, encryptedPass, email]
+        );
+        return res.status(201).json({message: `Successfully registered ${username}`, success: true});
+        
     } catch(error) {
         if (error.code === "ER_DUP_ENTRY") {
             if (error.sqlMessage.includes("users.username")) {
-                res.status(409).json({message: "Username already exists", success: false}); 
+                return res.status(409).json({message: "Username already exists", success: false}); 
 
             }
             else if (error.sqlMessage.includes("users.email")) {
-                res.status(409).json({message: "Email already exists", success: false}); 
+                return res.status(409).json({message: "Email already exists", success: false}); 
 
             }
             else {
-                res.status(409).json({message: "Username/Email already exists", success: false}); 
+                return res.status(409).json({message: "Username/Email already exists", success: false}); 
 
             }
         }

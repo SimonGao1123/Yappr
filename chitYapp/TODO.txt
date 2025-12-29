@@ -1,9 +1,36 @@
-General
-- Navbar for pages
+TO FINISH DEVELOPMENT: 
 
-Friends Page
-- CSS STYLING
-- Fix issue with slow update, try to make it update whenever current user changes or a change in friends list
+- Style friends list
 
-Messaging Page
-- TODO
+- Style chats pages + fix date on messages (make it more readable)
+
+- Style create chats popup + add membets popup
+
+- Fix navbar (make settings tab and hide logout button)
+
+- Fix user identifier at bottom left of pages
+
+
+DEBUGGING:
+
+- reread all routes, reduce amount of SQL queries and remove redundant information passed between front+backend
+
+- ensure everything updates live
+
+- fix bug with displaying add members popup (still open when changing pages and displays old information)
+
+
+FUTURE ADDITIONS:
+
+- add matchmaking (new table to hold users in matchmaking and to assign them into chats)
+
+- add image attachment
+
+- add settings, able to change ui between light/dark mode + other customizability
+
+- allow image profile pictures + user descriptions (need to be added in database)
+
+- make email used for forgot password or 2 step verification
+
+
+FINAL: PRODUCTION

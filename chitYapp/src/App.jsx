@@ -17,9 +17,9 @@ function handleLogOut (setCurrentUser, setLoginStatus, setDisplay) {
         console.log("Error in logging out of session", err);
       });
 
-  setCurrentUser(null);
-  setLoginStatus(true); 
-  setDisplay(true);
+  setCurrentUser(null); // removes data of login user
+  setLoginStatus(true); // returns to login page
+  setDisplay(true); // next time open automatically goes to chats
 }
 function App() {
     // LOGIN PAGE: 
@@ -36,7 +36,7 @@ function App() {
 
     
 
-
+    // runs every time refresh
     useEffect(() => {
       fetch("http://localhost:3000/userLogins/me", {
         method: "GET",

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './LoginPage.css';
 
 function LoginPage ({setLoginStatus, setCurrentUser}) {
-    const [loginUsername, setLoginUsername] = useState("");
+    const [loginUserEmail, setLoginUserEmail] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
 
     const [registerUsername, setRegisterUsername] = useState("");
@@ -24,8 +24,8 @@ function LoginPage ({setLoginStatus, setCurrentUser}) {
     }
     const loginSection = <div id="login-section">
                 <UserLogin
-                loginUsername={loginUsername}
-                setLoginUsername={setLoginUsername}
+                loginUserEmail={loginUserEmail}
+                setLoginUserEmail={setLoginUserEmail}
                 loginPassword={loginPassword}
                 setLoginPassword={setLoginPassword}
                 setDisplayMessage={setDisplayMessage}
@@ -70,7 +70,7 @@ function LoginPage ({setLoginStatus, setCurrentUser}) {
 }
 
 
-function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPassword, setDisplayMessage, setLoginStatus, setCurrentUser}) {
+function UserLogin ({loginUserEmail, setLoginUserEmail, loginPassword, setLoginPassword, setDisplayMessage, setLoginStatus, setCurrentUser}) {
     function handleUserLogin (e) {
         e.preventDefault();
 
@@ -78,7 +78,7 @@ function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPas
             method: "POST",
             headers: {"Content-Type": "application/json"},
             credentials: "include",
-            body: JSON.stringify({username: loginUsername, password: loginPassword})
+            body: JSON.stringify({userOrEmail: loginUserEmail, password: loginPassword})
         }).then(async (response) => {
             const parsed = await response.json();
 
@@ -91,7 +91,7 @@ function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPas
         }).catch((error) => {
             console.log("Error while logging in: ", error);
         })
-        setLoginUsername("");
+        setLoginUserEmail("");
         setLoginPassword("");
     }   
     return (
@@ -99,7 +99,7 @@ function UserLogin ({loginUsername, setLoginUsername, loginPassword, setLoginPas
             <h2 className='login-header'>Login</h2>
             <form className='form-login' onSubmit={handleUserLogin}>
                 <div className='login-input-container'>
-                    <input className="input-login" placeholder="Username" id="login-username" type="text" maxLength={30} value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)}/>
+                    <input className="input-login" placeholder="Username/Email" id="login-username" type="text" maxLength={30} value={loginUserEmail} onChange={(e) => setLoginUserEmail(e.target.value)}/>
                 </div>
 
                 <div className='login-input-container'>

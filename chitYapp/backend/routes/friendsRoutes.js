@@ -223,48 +223,11 @@ router.get("/currFriends/:user_id", async(req, res) => {
     const user_id = req.params.user_id; // gets the current user logged in id
 
     try {
-        const userSender = await db.promise().query(
-            'SELECT friend_id, receiver_id FROM Friends WHERE sender_id=? AND status="accepted"',
-            [user_id]
-        );
-        const userReceiver = await db.promise().query(
-            'SELECT friend_id, sender_id FROM Friends WHERE receiver_id=? AND status="accepted"',
-            [user_id]
-        ); 
-
-        const rowsUserSender = userSender[0];
-        const rowsUserReceiver = userReceiver[0];
-
-        const currFriends = []; // to be returned
-        
-        for (const friends of rowsUserSender) {
-            // friends will store friend_id and receiver_id (where user_id is the sender)
-            const [rows] = await db.promise().query(
-                'SELECT username FROM Users WHERE user_id = ?',
-                [friends.receiver_id]
-            );
-            currFriends.push(
-                {
-                    username: rows[0].username, 
-                    user_id: friends.receiver_id, 
-                    friend_id: friends.friend_id
-                }
-            );
-        }
-        for (const friends of rowsUserReceiver) {
-            // friends will store friend_id and sender_id (where user_id is the receiver)
-            const [rows] = await db.promise().query(
-                'SELECT username FROM Users WHERE user_id = ?',
-                [friends.sender_id]
-            );
-            currFriends.push(
-                {
-                    username: rows[0].username, 
-                    user_id: friends.sender_id, 
-                    friend_id: friends.friend_id
-                }
-            );
-        }
+        const [currFriends] = await db.promise().query(
+            
+            'SELECT f.friend_id, u.username, u.user_id FROM Friends f JOIN Users u ON u.user_id=CASE WHEN f.sender_id=? THEN f.receiver_id ELSE f.sender_id END WHERE (f.sender_id=? OR f.receiver_id=?) AND status="accepted"'
+            , [user_id, user_id, user_id]
+        )
 
         return res.status(200).json({success: true, message: "updated current friends list", currFriends:currFriends});
     } catch (err) {
