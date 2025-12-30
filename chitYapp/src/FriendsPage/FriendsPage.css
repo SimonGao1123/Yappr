@@ -19,27 +19,27 @@
 
 /* ACCEPT (GREEN) */
 .accept-req-btn {
-    background: linear-gradient(135deg, #17d8ff 0%, #00b3a7 100%);
+    background-color: #18c0e2;
 }
 .accept-req-btn:hover, #send-req-btn:hover {
-    background: linear-gradient(135deg, #12a7c5 0%, #00887f 100%);
+    background-color: #4a90e2;
 }
 .accept-req-btn:active, #send-req-btn:active {
-    background: linear-gradient(135deg, #0b6a7d 0%, #01554f 100%);
+    background-color: #357abd;
 }
 
 /* REJECT / CANCEL / UNFRIEND (RED) */
 .unfriend-btn, .cancel-req-btn,
 .reject-req-btn {
-    background: linear-gradient(135deg, #8b1cb7 0%, #c92466 100%);
+    background-color: #c92466;
 }
 .unfriend-btn:hover, .cancel-req-btn:hover,
 .reject-req-btn:hover {
-    background: linear-gradient(135deg, #6e1690 0%, #8a1946 100%);
+    background-color: #a01a50;
 }
 .unfriend-btn:active, .cancel-req-btn:active,
 .reject-req-btn:active {
-    background: linear-gradient(135deg, #420d57 0%, #75143b 100%);
+    background-color: #75143b;
 }
 
 /* ===== PAGE GRID =====
@@ -50,13 +50,15 @@
     display: grid;
     grid-template-columns: 1fr 1fr; /* change 360px to 1fr if you want fluid right column */
     grid-template-rows: auto 1fr;     /* search row auto, content row fills remaining height */
-    gap: 15px;
+    gap: 1rem;
     align-items: start;
     min-width: 0; /* avoid overflowing due to long content */
     box-sizing: border-box;
     width: 100%;
     height: 100%;                     
     border-radius: 10px;
+    background-color: #f5f5f5;
+    padding: 1rem;
 }
 
 /* ensure grid children can shrink so their own overflow works */
@@ -99,7 +101,7 @@
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    background: linear-gradient(135deg, #17d8ff 0%, #00b3a7 100%);
+    background-color: #2cd5eb;
     color: #fff;
     font-size: 0.8em;
     font-weight: bold;

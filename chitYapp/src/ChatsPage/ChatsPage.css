@@ -3,11 +3,18 @@
     display: grid;
     grid-template-columns: 1fr 2fr 1fr;
     gap: 1rem;
-    height: calc(100vh - 100px);
     padding: 1rem;
     background-color: #f5f5f5;
-}
 
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;                     
+    border-radius: 10px;
+
+}
+.chat-name-sec {
+    display: inline;
+}
 /* Left Column - Chat List */
 #chat-list-container {
     display: flex;
@@ -19,6 +26,8 @@
     padding: 1rem;
     overflow: hidden;
     min-height: 0;
+    
+    padding-bottom: 10vh;
 }
 
 #chat-list {
@@ -36,16 +45,24 @@
     background-color: #f9f9f9;
     border: 1px solid #e0e0e0;
     border-radius: 6px;
+    height: 8vh;
+    box-sizing: border-box;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+.chat-button-container {
+    display: flex;
     gap: 0.5rem;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 .chat:hover {
-    background-color: #f0f0f0;
-    border-color: #4a90e2;
+    background-color: #d3e7ff;
+    border: 2px solid #4a90e2;
     box-shadow: 0 2px 8px rgba(74, 144, 226, 0.2);
 }
 
@@ -61,9 +78,20 @@
     border-color: #357abd;
     box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
-
+#search-chats-bar {
+    height: 5vh;
+    font-size: 1.1em;
+    padding: 0.5rem;
+}
+.leave-chat-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+}
 .selected-chat p {
     color: white;
+}
+.selected-chat:hover p {
+    color: black;
 }
 
 #leave-btn,
@@ -75,10 +103,13 @@
     cursor: pointer;
     transition: all 0.2s ease;
 }
-
 #leave-btn {
     background-color: #ff9800;
     color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
 #leave-btn:hover {
@@ -334,8 +365,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 25vw;
-    max-height: 60vh;
+    width: 35vw;
+    max-height: 80vh;
     overflow-y: auto;
     background-color: white;
     border-radius: 8px;
@@ -441,9 +472,9 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 25vw;
-    max-height: 60vh;
-    overflow-y: auto;
+    width: 35vw;
+    max-height: 80vh;
+    overflow-y: scroll;
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);

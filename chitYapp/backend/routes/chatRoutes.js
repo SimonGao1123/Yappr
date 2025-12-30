@@ -36,6 +36,9 @@ router.post("/createChat", async (req, res) => {
             if (rows.length === 0) {
                 return res.status(401).json({success: false, message: `${username} is not your friend`});
             }
+            if (friend.user_id === creator_id) {
+                return res.status(401).json({success: false, message: "error, will add creator twice"});
+            }
 
             await db.promise().query(
                 'INSERT INTO Chat_Users (chat_id, user_id) VALUES (?, ?)',

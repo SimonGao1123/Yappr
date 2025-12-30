@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 import './ChatsPage.css';
 import MessagingSection from './MessagingSection/MessagingSection.jsx';
 
+import leaveChatIcon from '../images/leaveChatIcon.png';
+
 function ChatsPage ({currentUser, currentFriends}) {
     // currentFriends holds array of {user_id, username, friend_id}
     const [createChatsDisplay, setCreateChatsDisplay] = useState(false);
@@ -13,6 +15,7 @@ function ChatsPage ({currentUser, currentFriends}) {
             {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay}/> : <></>}
 
             <DisplayChats 
+                setCreateChatsDisplay={setCreateChatsDisplay}
                 addMembersDisplay={addMembersDisplay}
                 setAddMembersDisplay={setAddMembersDisplay}
                 currentUser={currentUser}
@@ -23,8 +26,10 @@ function ChatsPage ({currentUser, currentFriends}) {
     )
 }
 
-function DisplayChats ({addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends}) {
+function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends}) {
     const [selectedChat, setSelectedChat] = useState(null); // holds {chat object}
+    const [filterChats, setFilterChats] = useState("");
+
     useEffect(() => {
         if (!currentUser?.id) return;
 
@@ -39,17 +44,19 @@ function DisplayChats ({addMembersDisplay, setAddMembersDisplay, currentUser, al
     }, [currentUser?.id, allChats]);
 
     useEffect(() => {
-        if (!selectedChat) return;
+    if (!selectedChat) return;
 
-        const updatedChat = allChats.find(
-            chat => chat.chat_id === selectedChat.chat_id
-        ); // once allChat updates then selectedChat must also update, so that buttons with users update live
+    const updatedChat = allChats.find(
+        chat => chat.chat_id === selectedChat.chat_id
+    );
 
-        
-        if (updatedChat) {
-            setSelectedChat(updatedChat);
-        }
-    }, [allChats]);
+    if (updatedChat) {
+        setSelectedChat(updatedChat);
+    } else {
+        // chat no longer exists, clear selection
+        setSelectedChat(null);
+    }
+}, [allChats]);
 
     useEffect(() => {
         // reads
@@ -62,7 +69,7 @@ function DisplayChats ({addMembersDisplay, setAddMembersDisplay, currentUser, al
     
     const chat_list = [];
 
-    for (const chat of allChats || []) {
+    for (const chat of allChats.filter(chat => chat.chat_name.toLowerCase().includes(filterChats.toLowerCase())) || []) {
         // each chat is object {unread, creator_id, creator_username, chat_name, userList: [{username, user_id, status, friend_id (null if no friend_id)}], chat_id}
         const {chat_name} = chat;
         chat_list.push(
@@ -70,11 +77,24 @@ function DisplayChats ({addMembersDisplay, setAddMembersDisplay, currentUser, al
             onClick={() => setSelectedChat(chat)}
             className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""}`}
             >
-                <p>{chat_name} {chat.unread?"🔴 unread messages":""}</p>
-                <button id="leave-btn" onClick={() => leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id)}>Leave</button>
-                {chat.creator_id===currentUser.id ? 
-                <button id="delete-chat-btn" onClick={() => deleteChat(currentUser.id, chat.chat_id, chat.creator_id)}>Delete Chat</button> 
-                : <></>}
+                <p className='chat-name-sec'>{chat_name} {chat.unread?"🔴 unread messages":""}</p>
+                
+                <div className="chat-button-container">
+                    {chat.creator_id===currentUser.id ? 
+                    <button id="delete-chat-btn" onClick={() => {
+                        deleteChat(currentUser.id, chat.chat_id, chat.creator_id)
+                        if (chat.chat_id===selectedChat.chat_id) setSelectedChat(null);
+                        setAddMembersDisplay(false);
+                    }}>Delete</button> 
+                    : <></>}
+                    <button id="leave-btn" onClick={() => {
+                        leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id)
+                        console.log(chat.chat_id + ", " + selectedChat.chat_id);
+                        if (chat.chat_id===selectedChat.chat_id) setSelectedChat(null);
+                        setAddMembersDisplay(false);
+                    }}><img alt="Leave" className="leave-chat-icon" src={leaveChatIcon}/></button>
+
+                </div>
             </li>
         );
     }
@@ -82,16 +102,23 @@ function DisplayChats ({addMembersDisplay, setAddMembersDisplay, currentUser, al
     return (
         <>
         <main id="main-chat-page">
+
+            {/* Left column: chat list */}
             <div id="chat-list-container">
                 <button id="show-create-chat-popup" onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
+                <input type="text" id="search-chats-bar" placeholder="Search chats..." value={filterChats} onChange={(e) => {
+                    setFilterChats(e.target.value);
+                }}/>
+
                 <ul id="chat-list">
                     {chat_list}
                 </ul>
             </div>
+
+            {/* Middle and right columns, only exist if a chat is selected*/}
             {selectedChat ? 
                 <>
                 <ChatLayout
-                    creator_id={selectedChat.creator_id}
                     chat_name={selectedChat.chat_name}
                     chat_id={selectedChat.chat_id}   
                     currentUser={currentUser}
@@ -113,8 +140,8 @@ function DisplayChats ({addMembersDisplay, setAddMembersDisplay, currentUser, al
     );
 
 }
-function ChatLayout ({creator_id, chat_name, chat_id, currentUser}) {
-    
+function ChatLayout ({chat_name, chat_id, currentUser}) {
+    // middle column
     return (
         
         <div id="chat-layout">
@@ -196,6 +223,8 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
 
     return (
         <div id="add-friends-container">
+            <button id="close-add-members-popup" onClick={() => setAddMembersDisplay(false)}>X</button>
+            <h2>Add Members</h2>
             <ul>
                 {selectableFriends.map(friend => {
                     const isSelected = addedFriends.some(f => f.friend_id === friend.friend_id);
@@ -227,7 +256,6 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
                 Add
             </button>
 
-            <button id="close-add-members-popup" onClick={() => setAddMembersDisplay(false)}>X</button>
         </div>
     );
 }
@@ -389,10 +417,11 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay})
     return (
         <div id="create-chats-popup">
             <button id="close-create-chats-popup" onClick={() => setCreateChatsDisplay(false)}>X</button>
+            <h2>Create Chat</h2>
             <ul>
                 {friendsDisplay}
             </ul>
-            <input id="get-chat-name" value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
+            <input placeholder="Chat Name" id="get-chat-name" value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
             <button id="create-chat-btn" onClick={() => createChat(currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg)}>Create Chat</button>
             <p id="popup-display-msg">{displayMsg}</p>
         </div>

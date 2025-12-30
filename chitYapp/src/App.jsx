@@ -6,6 +6,7 @@ import FriendsPage from './FriendsPage/FriendsPage.jsx';
 import ChatsPage from './ChatsPage/ChatsPage.jsx';
 import Settings from './SettingsPage/Settings.jsx';
 
+import settingsIcon from './images/Gear-icon.png';
 function App() {
     // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
@@ -44,18 +45,82 @@ function App() {
 
     }, []); // will run everytime url path is changed, automatically logs in with user session
 
-    
-    console.log("Curr user: ", currentUser);
+    // auto update of friends
+    function getCurrentFriends () {
+        fetch(`http://localhost:3000/friends/currFriends/${currentUser.id}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        setCurrentFriends(data.currFriends);
+                    }
+                })
+                .catch(err => console.log(err));
+    }
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        getCurrentFriends();
+        const intervalId = setInterval(() => {
+            getCurrentFriends();
+        }, 2000);
+
+        return () => clearInterval(intervalId);
+    }, [currentUser?.id, currentFriends, displayIndex]);
+
+    function getOutgoingRequests () {
+        fetch(`http://localhost:3000/friends/outgoingRequests/${currentUser.id}`, {
+            method: "GET"
+        }).then(async response => {
+            const data = await response.json();
+            if (data.success) {
+                setOutFriendReq(data.outgoingRequests);
+            }
+            
+        }).catch(err => {
+            console.log(err);
+        });
+    }
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        getOutgoingRequests();
+        const intervalId = setInterval(() => {
+            getOutgoingRequests();
+        }, 2000);
+
+        return () => clearInterval(intervalId);
+    }, [currentUser?.id, outgoingFriendReq, displayIndex]);
+
+    function getIncomingReq () {
+        fetch(`http://localhost:3000/friends/incomingRequests/${currentUser.id}`, {
+            method: "GET"
+        }).then(async response => {
+            const parsed = await response.json();
+            if (parsed.success) {
+                setInFriendReq(parsed.incomingRequests);
+            }
+        }).catch(err => {
+            console.log(err);
+        })
+    }
+
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        getIncomingReq();
+        const intervalId = setInterval(() => {
+            getIncomingReq();
+        }, 2000);
+
+        return () => clearInterval(intervalId);
+    }, [currentUser?.id, incomingFriendReq, displayIndex]);
+
 
     const MAIN_PAGE = (
       <>
-        <NavBar 
-        setCurrentUser={setCurrentUser} 
-        setLoginStatus={setLoginStatus} 
+        <NavBar  
         setDisplayIndex={setDisplayIndex}
         displayIndex={displayIndex}/>
 
         <main id="app-main-section">
+          
           {displayIndex===0?
           <ChatsPage
           currentUser={currentUser}
@@ -80,7 +145,7 @@ function App() {
           :
           <></>}
           {currentUser ? 
-          <div id="user-info-container"><p id="user-info">Welcome {currentUser.username}, id: {currentUser.id}</p></div> : <></>}
+          <div id="user-info-container"><p id="user-info">Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div> : <></>}
         </main>
         
       </>
@@ -93,7 +158,7 @@ function App() {
     </>
   );
 }
-function NavBar ({setCurrentUser, setLoginStatus, setDisplayIndex, displayIndex}) {
+function NavBar ({setDisplayIndex, displayIndex}) {
   return (
   <>
     <div id="top-bar">
@@ -101,7 +166,7 @@ function NavBar ({setCurrentUser, setLoginStatus, setDisplayIndex, displayIndex}
         <button className={`nav-btn ${displayIndex===0?"active-tab":""}`} onClick={() => setDisplayIndex(0)} id="nav-chats-btn">Chats</button>
         <button className={`nav-btn ${displayIndex===1?"active-tab":""}`} onClick={() => setDisplayIndex(1)} id="nav-friends-btn">Friends</button>
       </nav>
-      <button className="nav-btn" id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>Settings</button>
+      <button className={`nav-btn ${displayIndex===2?"active-tab":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}><img src={settingsIcon} alt="Settings" id="settings-icon"/></button>
     </div>
   </>  
   );

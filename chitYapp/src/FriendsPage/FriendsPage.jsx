@@ -14,11 +14,11 @@ function FriendsPage (
             <main id="friends-main">
                 <SearchUsers searchBarInput={searchBarInput} setSearchBarInput={setSearchBarInput} currentUser={currentUser}/>
                 
-                <DisplayCurrentFriends currentFriends={currentFriends} setCurrentFriends={setCurrentFriends} currentUser={currentUser}/>
+                <DisplayCurrentFriends currentFriends={currentFriends}/>
                 
                 <div id="friends-right-column">
-                    <DisplayOutgoingRequests outgoingFriendReq={outgoingFriendReq} setOutFriendReq={setOutFriendReq} currentUser={currentUser}/>
-                    <DisplayIncomingRequests incomingFriendReq={incomingFriendReq} setInFriendReq={setInFriendReq} currentUser={currentUser}/>
+                    <DisplayOutgoingRequests outgoingFriendReq={outgoingFriendReq}/>
+                    <DisplayIncomingRequests incomingFriendReq={incomingFriendReq}/>
                 </div>
             </main>
         </>
@@ -57,32 +57,7 @@ function SearchUsers ({searchBarInput, setSearchBarInput, currentUser}) {
     );
 }
 
-function DisplayCurrentFriends ({currentFriends, setCurrentFriends, currentUser}) {
-    function getCurrentFriends () {
-        fetch(`http://localhost:3000/friends/currFriends/${currentUser.id}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        setCurrentFriends(data.currFriends);
-                    }
-                })
-                .catch(err => console.log(err));
-    }
-    useEffect(() => {
-        if (!currentUser?.id) return;
-
-        const intervalId = setInterval(() => {
-            getCurrentFriends();
-        }, 2000);
-
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id, currentFriends]);
-
-    useEffect(() => {
-        if(!currentUser?.id) return;
-        getCurrentFriends();
-    }, [currentUser?.id, currentFriends])
-
+function DisplayCurrentFriends ({currentFriends}) {
     const friendsList = [];
 
     function unfriendFunction (friend_id, other_user_username, other_user_id) {
@@ -117,35 +92,8 @@ function DisplayCurrentFriends ({currentFriends, setCurrentFriends, currentUser}
         </div>);
 }
 
-function DisplayOutgoingRequests ({outgoingFriendReq, setOutFriendReq, currentUser}) {
-    function getOutgoingRequests () {
-        fetch(`http://localhost:3000/friends/outgoingRequests/${currentUser.id}`, {
-            method: "GET"
-        }).then(async response => {
-            const data = await response.json();
-            if (data.success) {
-                setOutFriendReq(data.outgoingRequests);
-            }
-            
-        }).catch(err => {
-            console.log(err);
-        });
-    }
-    useEffect(() => {
-        if (!currentUser?.id) return;
-
-        const intervalId = setInterval(() => {
-            getOutgoingRequests();
-        }, 2000);
-
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id, outgoingFriendReq]);
-
-    useEffect(() => {
-        if(!currentUser?.id) return;
-        getOutgoingRequests();
-    }, [currentUser?.id, outgoingFriendReq])
-
+function DisplayOutgoingRequests ({outgoingFriendReq}) {
+    
     function cancelRequest (friend_id, receiver_id, receiver_username) {
         fetch("http://localhost:3000/friends/cancel", {
             method: "POST",
@@ -180,35 +128,8 @@ function DisplayOutgoingRequests ({outgoingFriendReq, setOutFriendReq, currentUs
         </div>);
 }
 
-function DisplayIncomingRequests ({incomingFriendReq, setInFriendReq, currentUser}) {
-    function getIncomingReq () {
-        fetch(`http://localhost:3000/friends/incomingRequests/${currentUser.id}`, {
-            method: "GET"
-        }).then(async response => {
-            const parsed = await response.json();
-            if (parsed.success) {
-                setInFriendReq(parsed.incomingRequests);
-            }
-        }).catch(err => {
-            console.log(err);
-        })
-    }
-
-    useEffect(() => {
-        if (!currentUser?.id) return;
-
-        const intervalId = setInterval(() => {
-            getIncomingReq();
-        }, 2000);
-
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id, incomingFriendReq]);
-
-    useEffect(() => {
-        if(!currentUser?.id) return;
-        getIncomingReq();
-    }, [currentUser?.id, incomingFriendReq])
-
+function DisplayIncomingRequests ({incomingFriendReq}) {
+    
     function rejectRequest (friend_id, sender_username, sender_id) {
         fetch("http://localhost:3000/friends/reject", {
             method: "POST",

@@ -6,33 +6,15 @@ CREATE TABLE Users (
     password VARCHAR(225) NOT NULL,
     email VARCHAR(225) NOT NULL UNIQUE,
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description TEXT,
+
     PRIMARY KEY (user_id)
 );
 
--- @block
-INSERT INTO Users (username, password, email) VALUES ("simon", "1", "11"); 
-INSERT INTO Users (username, password, email) VALUES ("judy", "2", "21"); 
-INSERT INTO Users (username, password, email) VALUES ("alvin", "3", "31"); 
-INSERT INTO Users (username, password, email) VALUES ("gordon", "4", "41"); 
 
--- @block 
-DROP TABLE Users;
--- @block 
-DELETE FROM Users;
-
--- @block
-SELECT * FROM Users;
-
--- @block
 CREATE UNIQUE INDEX uniq_username ON Users(username);
 CREATE UNIQUE INDEX uniq_email ON Users(email);
 
--- @block 
-SHOW INDEX FROM Users;
-
-
--- FRIENDS TABLE
--- @block
 CREATE TABLE Friends (
     friend_id INT AUTO_INCREMENT,
     sender_id INT NOT NULL,
@@ -51,23 +33,8 @@ CREATE TABLE Friends (
         FOREIGN KEY (receiver_id)
         REFERENCES Users(user_id)
 );
--- @block
-SELECT * FROM Users;
-SELECT * FROM Friends;
 
--- @block
-UPDATE Friends
-SET status="accepted"
-WHERE friend_id = 6;
 
--- @block
-DELETE FROM Friends;
-
--- @block
-DROP TABLE Friends;
-
--- CHATS TABLE (holds all chats)
--- @block
 CREATE TABLE Chats (
     chat_id INT AUTO_INCREMENT UNIQUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -80,11 +47,7 @@ CREATE TABLE Chats (
         FOREIGN KEY (creator_id)
         REFERENCES Users(user_id)
 );
--- @block
-DROP TABLE Chats;
 
--- @block
--- USERS IN CHAT TABLE (holds users in chat)
 CREATE TABLE Chat_Users (
     chat_user_id INT AUTO_INCREMENT,
     chat_id INT NOT NULL,
@@ -102,15 +65,6 @@ CREATE TABLE Chat_Users (
         REFERENCES Users(user_id)
 );
 
--- @block
-SELECT * FROM Chats;
-SELECT * FROM Chat_Users;
--- @block
-
-DROP TABLE Chat_Users;
-
-
--- @block
 CREATE TABLE Messages (
     message_id INT AUTO_INCREMENT,
     chat_id INT NOT NULL,
@@ -129,8 +83,13 @@ CREATE TABLE Messages (
         FOREIGN KEY (sender_id)
         REFERENCES Users(user_id)
 );
+
 -- @block
 DROP TABLE Messages;
+DROP TABLE Chat_Users;
+DROP TABLE Chats;
+DROP TABLE Friends;
+DROP TABLE Users;
 
 -- @block
 SELECT * FROM Users;
