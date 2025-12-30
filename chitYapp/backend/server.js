@@ -5,6 +5,7 @@ import userLoginRouter from './routes/userLogin.js';
 import friendsRouter from './routes/friendsRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import messagingRoutes from './routes/messagingRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 
 import session from 'express-session'; 
 
@@ -35,5 +36,6 @@ app.use("/userLogins", userLoginRouter);
 app.use("/friends", friendsRouter);
 app.use("/chats", chatRoutes);
 app.use("/message", messagingRoutes);
+app.use("/settings", settingsRoutes);
 
 app.listen(3000, () => console.log("http://localhost:3000")); // temporary (for development)

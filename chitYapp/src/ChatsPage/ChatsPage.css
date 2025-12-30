@@ -103,6 +103,119 @@
     cursor: pointer;
     transition: all 0.2s ease;
 }
+
+#display-user-details {
+    position: absolute;
+    top: -0.5rem;
+    right: 100%;
+    margin-right: 0.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 2px solid #4a90e2;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+    z-index: 10009;
+    width: 280px;
+    max-height: 400px;
+    overflow-y: auto;
+    animation: slideIn 0.2s ease-out;
+    
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+#display-user-details::-webkit-scrollbar {
+    width: 6px;
+}
+
+#display-user-details::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#display-user-details::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border-radius: 3px;
+}
+
+#display-user-details::-webkit-scrollbar-thumb:hover {
+    background: #a0a0a0;
+}
+
+#close-user-details {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+    min-width: 24px;
+    text-align: center;
+}
+
+#close-user-details:hover {
+    background-color: #da190b;
+    transform: scale(1.1);
+}
+
+#display-user-username {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    word-break: break-word;
+    padding-right: 2rem;
+}
+
+#creation-date,
+#joined-date,
+#display-user-description,
+#friends-since,
+.desc-friends {
+    margin: 0.5rem 0;
+    font-size: 0.75rem;
+    color: #555;
+    line-height: 1.4;
+
+}
+
+#creation-date::before {
+    content: "📅 ";
+}
+
+#joined-date::before {
+    content: "📍 ";
+}
+
+#display-user-description {
+    background-color: #f0f4f8;
+    padding: 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid #4a90e2;
+    margin-top: 0.75rem;
+    overflow-y: scroll;
+    overflow-wrap: break-word;
+}
+
+#display-user-description::before {
+    content: "📝 ";
+}
+
 #leave-btn {
     background-color: #ff9800;
     color: white;
@@ -258,6 +371,7 @@
     gap: 0.5rem;
     font-weight: 500;
     color: #333;
+    position: relative;
 }
 
 .chat-user-list:hover {
@@ -338,10 +452,10 @@
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
+    overflow: visible;
     padding: 1rem;
+    z-index: 1;
 }
-
 #add-members-btn {
     width: 100%;
     padding: 0.7rem;

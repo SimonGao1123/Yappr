@@ -157,21 +157,26 @@ function ChatLayout ({chat_name, chat_id, currentUser}) {
 function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userList, creator_id, currentUser, currentFriends}) {
     // userList contains array of {friend_id (could be null), user_id, status, username}
     const userDisplay = [];
+    const [userDetailsOpened, setUserDetailsOpen] = useState(null); // holds user_id
 
     for (const user of userList) {
-        const {friend_id, user_id, status, username} = user;
+        const {friend_id, user_id, status, username, joined_at, account_created, description, updated_at} = user;
         let friendBtns;
+
+        let descFriends;
 
         if (user_id !== currentUser.id) {    
             
             if (status==="friends") {
                 friendBtns = " 👥";
+                descFriends = `Friends`
             } else if (status === "outgoing") {
                 friendBtns = (
                     <button className="cancel-req-btn" onClick={() =>
                         cancelRequest(friend_id, user_id, username)
                     }> Cancel </button>
                 );
+                descFriends = " Outgoing Request";
             } else if (status === "incoming") {
                 friendBtns = (
                     <div className="chat-incoming-req-btns">
@@ -183,6 +188,7 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                         }> Accept </button>
                     </div>
                 );
+                descFriends = " Incoming Request";
             } else {
                 friendBtns = (
                     <button className="send-friend-req-btn" onClick={() => 
@@ -195,9 +201,26 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
         }
 
         userDisplay.push(
-            <li key={`${chat_id}-${user.username}`} className='chat-user-list'>
+            <li key={`${chat_id}-${user.username}`} className='chat-user-list' onClick={() => setUserDetailsOpen(user_id)}>
+                {userDetailsOpened === user_id ? 
+                <DisplayUserDetails
+                    user_id={user_id}
+                    username={username}
+                    description={description}
+                    account_created={formatDateTimeSmart(account_created)}
+                    joined_at={formatDateTimeSmart(joined_at)}
+                    friendsBtns={friendBtns}
+                    updated_at={formatDateTimeSmart(updated_at)}
+                    descFriends={descFriends}
+                    setUserDetailsOpen={setUserDetailsOpen}
+                    currentUser={currentUser}
+                /> 
+                
+                :
+                <></>}
+
                 {`${creator_id===user_id?"👑":""}`}{username}{currentUser.id===user_id?"(You)":""}
-                {friendBtns}
+                <p className='desc-friends'>{descFriends}</p>
                 {creator_id===currentUser.id && currentUser.id !== user_id?
                 <button className="kick-btn" onClick={()=>kickUser(creator_id, currentUser.id, currentUser.username, user_id, username, chat_id)}>Kick</button>:<></>}
             </li>
@@ -210,6 +233,22 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
 
             {addMembersDisplay?<AddMembersPopup setAddMembersDisplay={setAddMembersDisplay} userList={userList} currentFriends={currentFriends} chat_id={chat_id} currentUser={currentUser}/>:<></>}
         </ul>
+    );
+}
+function DisplayUserDetails ({user_id, username, description, account_created, joined_at, friendsBtns, updated_at, descFriends, setUserDetailsOpen, currentUser}) {
+    return (
+        <div id='display-user-details'>
+            <button id="close-user-details" onClick={(e) => {
+                e.stopPropagation();
+                setUserDetailsOpen(null)
+                }}>X</button>
+            <h3 id="display-user-username"><b>{username}</b> ID: {user_id} {friendsBtns}</h3>
+            <p id="creation-date">Account created at: {account_created}</p>
+            <p id="joined-date">Joined chat: {joined_at}</p>
+            {currentUser.id !== user_id ? <p id="friends-since">{descFriends} {updated_at ? `Since ${updated_at}` : ""}</p> : <></>}
+            
+            <p id="display-user-description">Description: {description ? description : "None added"}</p>
+        </div>
     );
 }
 
@@ -259,7 +298,27 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
         </div>
     );
 }
+function formatDateTimeSmart(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
 
+  const isSameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const options = {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  };
+
+  // Same day → just date + time (no weekday)
+  return date.toLocaleString("en-US", options);
+}
 function addMembers (username, user_id, addedFriends, chat_id) {
     fetch("http://localhost:3000/chats/addToChat", {
         method: "POST",

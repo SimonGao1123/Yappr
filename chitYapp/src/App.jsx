@@ -141,6 +141,7 @@ function App() {
           setCurrentUser={setCurrentUser}
           setLoginStatus={setLoginStatus}
           setDisplayIndex={setDisplayIndex}
+          currentUser={currentUser}
           />
           :
           <></>}

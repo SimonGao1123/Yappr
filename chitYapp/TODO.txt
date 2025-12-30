@@ -26,5 +26,6 @@ FUTURE ADDITIONS:
 
 - make email used for forgot password or 2 step verification
 
+- Mutual friends 
 
 FINAL: PRODUCTION

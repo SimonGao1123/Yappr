@@ -158,7 +158,7 @@ router.get("/displayChats/:user_id", async (req, res) => {
 
             // obtain users
             const users = await db.promise().query(
-                'SELECT user_id FROM Chat_Users WHERE chat_id=?',
+                'SELECT user_id, joined_at FROM Chat_Users WHERE chat_id=?',
                 [chat.chat_id]
             ); // obtains all the users in the specific chat
 
@@ -167,21 +167,23 @@ router.get("/displayChats/:user_id", async (req, res) => {
             // obtain username of that user and the status with the user, (friends, Pending Incoming Req, Pending Outgoing Req, None)
             for (let i = 0; i < allUsers.length; i++) {
                 const username = await db.promise().query(
-                    'SELECT username FROM Users WHERE user_id = ?',
+                    'SELECT username, joined_at, description FROM Users WHERE user_id = ?',
                     [allUsers[i].user_id]
                 );
 
                 
                 const checkStatus = await db.promise().query(
-                    'SELECT status, sender_id, receiver_id, friend_id FROM Friends WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)',
+                    'SELECT status, sender_id, receiver_id, friend_id, updated_at FROM Friends WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)',
                     [user_id, allUsers[i].user_id, allUsers[i].user_id, user_id]
                 ) // if they already are friends only one possibility 
                 let status = "none";
                 let friend_id = null;
+                let updated_at = null;
 
                 if (checkStatus[0].length > 0) {
                     const row = checkStatus[0][0];
                     friend_id = row.friend_id;
+                    updated_at = row.updated_at;
 
                     if (row.status === "accepted") {
                         status = "friends";
@@ -193,9 +195,14 @@ router.get("/displayChats/:user_id", async (req, res) => {
                 }
 
                 allUsers[i].friend_id = friend_id;
+                allUsers[i].updated_at = updated_at;
                 
                 allUsers[i].status = status;
                 allUsers[i].username = username[0][0].username;
+                allUsers[i].account_created = username[0][0].joined_at;
+
+                allUsers[i].description = username[0][0].description;
+                
                 // now all Users stores array of objects of {username, user_id}
             }
 
