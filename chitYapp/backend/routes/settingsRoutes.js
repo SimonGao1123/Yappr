@@ -38,9 +38,35 @@ router.get("/getDescription/:user_id", async (req, res) => {
     }
 })
 
+router.post("/switchLightDarkMode", async (req, res) => {
+    // ifLightMode is true for light mode, false for dark mode
+    const {ifLightMode, user_id} = req.body;
+    if (ifLightMode === undefined || !user_id) return res.status(401).json({success: false, message: "Invalid option"});
 
-// TODO:
-router.post("/setColorTheme", async (req, res) => {
-
+    try {
+        await db.promise().query(
+            'UPDATE Settings SET light_mode=? WHERE user_id=?',
+            [ifLightMode, user_id]
+        );
+        return res.status(201).json({success: true, message: "Successfully updated mode"});
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+    
 })
+
+router.get("/ifLightMode/:user_id", async (req, res) => {
+    const user_id = req.params.user_id;
+    try {
+        const [rows] = await db.promise().query(
+            'SELECT light_mode FROM Settings WHERE user_id=?',
+            [user_id]
+        );
+        return res.status(200).json({success: true, message: "obtained mode", light_mode: rows[0].light_mode});
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+});
 export default router;

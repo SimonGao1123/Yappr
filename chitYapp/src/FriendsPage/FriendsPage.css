@@ -197,3 +197,89 @@
   min-width: 0;
 }
 
+/* ===== DARK MODE STYLES ===== */
+#friends-main.dark-mode {
+  background-color: #1e1e1e;
+}
+
+#add-friend-form.dark-mode {
+  color: #f0f0f0;
+}
+
+#user-search-bar.dark-mode {
+  background-color: #2a2a2a;
+  color: #f0f0f0;
+  border-color: #444444;
+}
+
+#user-search-bar.dark-mode::placeholder {
+  color: #999999;
+}
+
+#send-req-btn.dark-mode {
+  background-color: #4a90e2;
+  color: white;
+}
+
+#send-req-btn.dark-mode:hover {
+  background-color: #357abd;
+}
+
+#send-req-btn.dark-mode:active {
+  background-color: #2a5fa8;
+}
+
+#display-msg.dark-mode {
+  color: #b0b0b0;
+}
+
+#current-friends-list.dark-mode,
+#outgoing-req-list.dark-mode,
+#incoming-req-list.dark-mode {
+  background-color: #2a2a2a;
+  color: #f0f0f0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.friends-header.dark-mode {
+  color: #e0e0e0;
+}
+
+.friends-li.dark-mode {
+  background-color: #333333;
+  color: #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.unfriend-btn.dark-mode,
+.cancel-req-btn.dark-mode,
+.reject-req-btn.dark-mode {
+  background-color: #c92466;
+  color: white;
+}
+
+.unfriend-btn.dark-mode:hover,
+.cancel-req-btn.dark-mode:hover,
+.reject-req-btn.dark-mode:hover {
+  background-color: #a01a50;
+}
+
+.unfriend-btn.dark-mode:active,
+.cancel-req-btn.dark-mode:active,
+.reject-req-btn.dark-mode:active {
+  background-color: #75143b;
+}
+
+.accept-req-btn.dark-mode {
+  background-color: #18c0e2;
+  color: white;
+}
+
+.accept-req-btn.dark-mode:hover {
+  background-color: #4a90e2;
+}
+
+.accept-req-btn.dark-mode:active {
+  background-color: #357abd;
+}
+

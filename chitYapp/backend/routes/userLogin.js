@@ -74,9 +74,14 @@ router.post("/register", async (req, res) => {
 
     try {
         const encryptedPass = encryptPassword(password);
-        await db.promise().query(
+        const [result] = await db.promise().query(
             'INSERT INTO Users (username, password, email) VALUES (?, ?, ?)',
             [username, encryptedPass, email]
+        );
+        
+        await db.promise().query(
+            'INSERT INTO Settings (user_id) VALUES (?)',
+            [result.insertId]
         );
         return res.status(201).json({message: `Successfully registered ${username}`, success: true});
         

@@ -5,14 +5,14 @@ import MessagingSection from './MessagingSection/MessagingSection.jsx';
 
 import leaveChatIcon from '../images/leaveChatIcon.png';
 
-function ChatsPage ({currentUser, currentFriends}) {
+function ChatsPage ({currentUser, currentFriends, ifLightMode}) {
     // currentFriends holds array of {user_id, username, friend_id}
     const [createChatsDisplay, setCreateChatsDisplay] = useState(false);
     const [addMembersDisplay, setAddMembersDisplay] = useState(false);
     const [allChats, setAllChats] = useState([]);
     return (
         <>
-            {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay}/> : <></>}
+            {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay} ifLightMode={ifLightMode}/> : <></>}
 
             <DisplayChats 
                 setCreateChatsDisplay={setCreateChatsDisplay}
@@ -21,12 +21,13 @@ function ChatsPage ({currentUser, currentFriends}) {
                 currentUser={currentUser}
                 allChats={allChats}
                 setAllChats={setAllChats}
-                currentFriends={currentFriends}/>
+                currentFriends={currentFriends}
+                ifLightMode={ifLightMode}/>
         </>
     )
 }
 
-function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends}) {
+function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends, ifLightMode}) {
     const [selectedChat, setSelectedChat] = useState(null); // holds {chat object}
     const [filterChats, setFilterChats] = useState("");
 
@@ -75,19 +76,19 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
         chat_list.push(
             <li key={chat.chat_id}
             onClick={() => setSelectedChat(chat)}
-            className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""}`}
+            className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""} ${!ifLightMode?"dark-mode":""}`}
             >
                 <p className='chat-name-sec'>{chat_name} {chat.unread?"🔴 unread messages":""}</p>
                 
                 <div className="chat-button-container">
                     {chat.creator_id===currentUser.id ? 
-                    <button id="delete-chat-btn" onClick={() => {
+                    <button id="delete-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
                         deleteChat(currentUser.id, chat.chat_id, chat.creator_id)
                         if (chat.chat_id===selectedChat.chat_id) setSelectedChat(null);
                         setAddMembersDisplay(false);
                     }}>Delete</button> 
                     : <></>}
-                    <button id="leave-btn" onClick={() => {
+                    <button id="leave-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
                         leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id)
                         console.log(chat.chat_id + ", " + selectedChat.chat_id);
                         if (chat.chat_id===selectedChat.chat_id) setSelectedChat(null);
@@ -101,12 +102,12 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
 
     return (
         <>
-        <main id="main-chat-page">
+        <main id="main-chat-page" className={!ifLightMode?"dark-mode":""}>
 
             {/* Left column: chat list */}
-            <div id="chat-list-container">
-                <button id="show-create-chat-popup" onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
-                <input type="text" id="search-chats-bar" placeholder="Search chats..." value={filterChats} onChange={(e) => {
+            <div id="chat-list-container" className={!ifLightMode?"dark-mode":""}>
+                <button id="show-create-chat-popup" className={!ifLightMode?"dark-mode":""} onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
+                <input type="text" id="search-chats-bar" className={!ifLightMode?"dark-mode":""} placeholder="Search chats..." value={filterChats} onChange={(e) => {
                     setFilterChats(e.target.value);
                 }}/>
 
@@ -122,6 +123,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                     chat_name={selectedChat.chat_name}
                     chat_id={selectedChat.chat_id}   
                     currentUser={currentUser}
+                    ifLightMode={ifLightMode}
                 /> 
                 <UsersLayout
                     addMembersDisplay={addMembersDisplay}
@@ -131,6 +133,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                     creator_id={selectedChat.creator_id}
                     currentUser={currentUser}
                     currentFriends={currentFriends}
+                    ifLightMode={ifLightMode}
                 />
                 </>
                 
@@ -140,21 +143,22 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
     );
 
 }
-function ChatLayout ({chat_name, chat_id, currentUser}) {
+function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode}) {
     // middle column
     return (
         
-        <div id="chat-layout">
-            <p id="chat-name">{chat_name}</p>
+        <div id="chat-layout" className={!ifLightMode?"dark-mode":""}>
+            <p id="chat-name" className={!ifLightMode?"dark-mode":""}>{chat_name}</p>
             <MessagingSection
             currentUser={currentUser}
             chat_id={chat_id}
+            ifLightMode={ifLightMode}
             />
         </div>
         
     );
 }
-function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userList, creator_id, currentUser, currentFriends}) {
+function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userList, creator_id, currentUser, currentFriends, ifLightMode}) {
     // userList contains array of {friend_id (could be null), user_id, status, username}
     const userDisplay = [];
     const [userDetailsOpened, setUserDetailsOpen] = useState(null); // holds user_id
@@ -172,7 +176,7 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                 descFriends = `Friends`
             } else if (status === "outgoing") {
                 friendBtns = (
-                    <button className="cancel-req-btn" onClick={() =>
+                    <button className={`cancel-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
                         cancelRequest(friend_id, user_id, username)
                     }> Cancel </button>
                 );
@@ -180,10 +184,10 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
             } else if (status === "incoming") {
                 friendBtns = (
                     <div className="chat-incoming-req-btns">
-                    <button className="reject-req-btn" onClick={() =>
+                    <button className={`reject-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
                             rejectRequest(friend_id, username, user_id)
                         }> Reject </button>
-                    <button className="accept-req-btn" onClick={() =>
+                    <button className={`accept-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
                             acceptRequest(friend_id, username, user_id)
                         }> Accept </button>
                     </div>
@@ -191,7 +195,7 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                 descFriends = " Incoming Request";
             } else {
                 friendBtns = (
-                    <button className="send-friend-req-btn" onClick={() => 
+                    <button className={`send-friend-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() => 
                         sendRequest(currentUser.id,user_id)
                     }>
                         Send Request
@@ -201,7 +205,7 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
         }
 
         userDisplay.push(
-            <li key={`${chat_id}-${user.username}`} className='chat-user-list' onClick={() => setUserDetailsOpen(user_id)}>
+            <li key={`${chat_id}-${user.username}`} className={`chat-user-list ${!ifLightMode?"dark-mode":""}`} onClick={() => setUserDetailsOpen(user_id)}>
                 {userDetailsOpened === user_id ? 
                 <DisplayUserDetails
                     user_id={user_id}
@@ -214,45 +218,46 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                     descFriends={descFriends}
                     setUserDetailsOpen={setUserDetailsOpen}
                     currentUser={currentUser}
+                    ifLightMode={ifLightMode}
                 /> 
                 
                 :
                 <></>}
 
                 {`${creator_id===user_id?"👑":""}`}{username}{currentUser.id===user_id?"(You)":""}
-                <p className='desc-friends'>{descFriends}</p>
+                <p className={`desc-friends ${!ifLightMode?"dark-mode":""}`}>{descFriends}</p>
                 {creator_id===currentUser.id && currentUser.id !== user_id?
-                <button className="kick-btn" onClick={()=>kickUser(creator_id, currentUser.id, currentUser.username, user_id, username, chat_id)}>Kick</button>:<></>}
+                <button className={`kick-btn ${!ifLightMode?"dark-mode":""}`} onClick={()=>kickUser(creator_id, currentUser.id, currentUser.username, user_id, username, chat_id)}>Kick</button>:<></>}
             </li>
         );
     }
     return (
-        <ul>
+        <ul id="chat-users-container" className={!ifLightMode?"dark-mode":""}>
+            <div id="chat-users-header" className={!ifLightMode?"dark-mode":""}>Users in Chat:</div>
             {userDisplay}
-            <button id="add-members-btn" onClick={() => setAddMembersDisplay(true)}>Add members</button>
-
-            {addMembersDisplay?<AddMembersPopup setAddMembersDisplay={setAddMembersDisplay} userList={userList} currentFriends={currentFriends} chat_id={chat_id} currentUser={currentUser}/>:<></>}
+            <button id="add-members-btn" className={!ifLightMode?"dark-mode":""} onClick={() => setAddMembersDisplay(true)}>Add members</button>
+            {addMembersDisplay?<AddMembersPopup setAddMembersDisplay={setAddMembersDisplay} userList={userList} currentFriends={currentFriends} chat_id={chat_id} currentUser={currentUser} ifLightMode={ifLightMode}/>:<></>}
         </ul>
     );
 }
-function DisplayUserDetails ({user_id, username, description, account_created, joined_at, friendsBtns, updated_at, descFriends, setUserDetailsOpen, currentUser}) {
+function DisplayUserDetails ({user_id, username, description, account_created, joined_at, friendsBtns, updated_at, descFriends, setUserDetailsOpen, currentUser, ifLightMode}) {
     return (
-        <div id='display-user-details'>
-            <button id="close-user-details" onClick={(e) => {
+        <div id='display-user-details' className={!ifLightMode?"dark-mode":""}>
+            <button id="close-user-details" className={!ifLightMode?"dark-mode":""} onClick={(e) => {
                 e.stopPropagation();
                 setUserDetailsOpen(null)
                 }}>X</button>
-            <h3 id="display-user-username"><b>{username}</b> ID: {user_id} {friendsBtns}</h3>
-            <p id="creation-date">Account created at: {account_created}</p>
-            <p id="joined-date">Joined chat: {joined_at}</p>
-            {currentUser.id !== user_id ? <p id="friends-since">{descFriends} {updated_at ? `Since ${updated_at}` : ""}</p> : <></>}
+            <h3 id="display-user-username" className={!ifLightMode?"dark-mode":""}><b>{username}</b> ID: {user_id} {friendsBtns}</h3>
+            <p id="creation-date" className={!ifLightMode?"dark-mode":""}>Account created at: {account_created}</p>
+            <p id="joined-date" className={!ifLightMode?"dark-mode":""}>Joined chat: {joined_at}</p>
+            {currentUser.id !== user_id ? <p id="friends-since" className={!ifLightMode?"dark-mode":""}>{descFriends} {updated_at ? `Since ${updated_at}` : ""}</p> : <></>}
             
-            <p id="display-user-description">Description: {description ? description : "None added"}</p>
+            <p id="display-user-description" className={!ifLightMode?"dark-mode":""}>Description: {description ? description : "None added"}</p>
         </div>
     );
 }
 
-function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_id, currentUser }) {
+function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_id, currentUser, ifLightMode }) {
     const [addedFriends, setAddedFriends] = useState([]);
 
     // Only show friends who are NOT already in the chat
@@ -261,9 +266,9 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
     );
 
     return (
-        <div id="add-friends-container">
-            <button id="close-add-members-popup" onClick={() => setAddMembersDisplay(false)}>X</button>
-            <h2>Add Members</h2>
+        <div id="add-friends-container" className={!ifLightMode?"dark-mode":""}>
+            <button id="close-add-members-popup" className={!ifLightMode?"dark-mode":""} onClick={() => setAddMembersDisplay(false)}>X</button>
+            <h2 className={!ifLightMode?"dark-mode":""}>Add Members</h2>
             <ul>
                 {selectableFriends.map(friend => {
                     const isSelected = addedFriends.some(f => f.friend_id === friend.friend_id);
@@ -271,7 +276,7 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
                     return (
                         <li
                             key={`add-members-${friend.friend_id}`}
-                            className={`add-members ${isSelected ? "selected" : ""}`}
+                            className={`add-members ${isSelected ? "selected" : ""} ${!ifLightMode?"dark-mode":""}`}
                             onClick={() => {
                                 if (isSelected) {
                                     setAddedFriends(
@@ -290,6 +295,7 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
 
             <button
                 id="add-members-btn"
+                className={!ifLightMode?"dark-mode":""}
                 onClick={() => addMembers(currentUser.username, currentUser.id, addedFriends, chat_id)}
             >
                 Add
@@ -445,7 +451,7 @@ function getChatData (user_id, setAllChats) {
     });
 }
 
-function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay}) {
+function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, ifLightMode}) {
     const [selectedFriends, setSelectedFriends] = useState([]);
     const [chatName, setChatName] = useState("");
     const [displayMsg, setDisplayMsg] = useState("");
@@ -458,7 +464,7 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay})
         friendsDisplay.push(
             <li key={`create-chats-popup-${friend.friend_id}`} 
             className={`create-chat-friends 
-                ${ifFriendSelected ? "selected" : ""}`}
+                ${ifFriendSelected ? "selected" : ""} ${!ifLightMode?"dark-mode":""}`}
             onClick={() => {
                 if (ifFriendSelected) {
                     // if already selected
@@ -474,15 +480,15 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay})
         );
     }
     return (
-        <div id="create-chats-popup">
-            <button id="close-create-chats-popup" onClick={() => setCreateChatsDisplay(false)}>X</button>
-            <h2>Create Chat</h2>
+        <div id="create-chats-popup" className={!ifLightMode?"dark-mode":""}>
+            <button id="close-create-chats-popup" className={!ifLightMode?"dark-mode":""} onClick={() => setCreateChatsDisplay(false)}>X</button>
+            <h2 className={!ifLightMode?"dark-mode":""}>Create Chat</h2>
             <ul>
                 {friendsDisplay}
             </ul>
-            <input placeholder="Chat Name" id="get-chat-name" value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
-            <button id="create-chat-btn" onClick={() => createChat(currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg)}>Create Chat</button>
-            <p id="popup-display-msg">{displayMsg}</p>
+            <input placeholder="Chat Name" id="get-chat-name" className={!ifLightMode?"dark-mode":""} value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
+            <button id="create-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={() => createChat(currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg)}>Create Chat</button>
+            <p id="popup-display-msg" className={!ifLightMode?"dark-mode":""}>{displayMsg}</p>
         </div>
     )
 }

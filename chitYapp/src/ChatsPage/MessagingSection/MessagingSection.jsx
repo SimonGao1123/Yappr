@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useEffect } from 'react';
 
-function MessagingSection ({currentUser, chat_id}) {
+function MessagingSection ({currentUser, chat_id, ifLightMode}) {
     const [pastMessageData, setMessageData] = useState([]); // only specific to certain messages
     useEffect(() => {
             if (!currentUser?.id) return;
@@ -19,15 +19,16 @@ function MessagingSection ({currentUser, chat_id}) {
         
     return (
         <>
-            <PastMessagesData pastMessageData={pastMessageData} currentUser={currentUser} chat_id={chat_id}/>
+            <PastMessagesData pastMessageData={pastMessageData} currentUser={currentUser} chat_id={chat_id} ifLightMode={ifLightMode}/>
             <SendMessageInput
             currentUser={currentUser}
             chat_id={chat_id}
+            ifLightMode={ifLightMode}
             />
         </>
     );
 }
-function PastMessagesData ({pastMessageData, currentUser, chat_id}) {
+function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode}) {
     // display for past messages
 
     const messageDisplay = [];
@@ -36,17 +37,17 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id}) {
         const {message_id, sender_id, message, username, sent_at} = messageData;
 
         messageDisplay.push(
-            <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""}`} key={message_id}>
-                <p className='msg-username-date'>{username} {formatDateTimeSmart(sent_at)}</p>
-                <p className="msg-text">{message}</p>
+            <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
+                <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
+                <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
 
-                {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className='delete-msg-btn'>Delete</button>:<></>}
+                {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
             </li>
         );
     }
 
     return (
-        <ul id="msg-display">
+        <ul id="msg-display" className={!ifLightMode?"dark-mode":""}>
             {messageDisplay}
         </ul>
     );
@@ -55,13 +56,13 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id}) {
 
 }
 
-function SendMessageInput ({currentUser, chat_id}) {
+function SendMessageInput ({currentUser, chat_id, ifLightMode}) {
     const [message, setMessage] = useState("");
 
     return (
-        <div id="send-msg-input">
-            <input id="message-send-bar" placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)}/>
-            <button id="send-msg-btn" onClick={() => sendMessage(chat_id, message, currentUser.id, setMessage)}>Send</button>
+        <div id="send-msg-input" className={!ifLightMode?"dark-mode":""}>
+            <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)}/>
+            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={() => sendMessage(chat_id, message, currentUser.id, setMessage)}>Send</button>
         </div>
     );
 }

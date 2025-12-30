@@ -456,6 +456,18 @@
     padding: 1rem;
     z-index: 1;
 }
+
+#chat-users-header {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #333;
+    margin: 0 0 0.5rem 0;
+    padding: 0.75rem;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    border-left: 4px solid #4a90e2;
+}
+
 #add-members-btn {
     width: 100%;
     padding: 0.7rem;
@@ -690,4 +702,350 @@
 #msg-display::-webkit-scrollbar-thumb:hover,
 #main-chat-page > ul::-webkit-scrollbar-thumb:hover {
     background: #555;
+}
+
+/* ===== DARK MODE STYLES ===== */
+#main-chat-page.dark-mode {
+    background-color: #1e1e1e;
+}
+
+#chat-list-container.dark-mode {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#show-create-chat-popup.dark-mode {
+    background-color: #4a90e2;
+    color: white;
+}
+
+#show-create-chat-popup.dark-mode:hover {
+    background-color: #357abd;
+}
+
+#search-chats-bar.dark-mode {
+    background-color: #333333;
+    color: #f0f0f0;
+    border-color: #444444;
+}
+
+#search-chats-bar.dark-mode::placeholder {
+    color: #999999;
+}
+
+.chat.dark-mode {
+    background-color: #333333;
+    color: #f0f0f0;
+    border-color: #444444;
+}
+
+.chat.dark-mode:hover {
+    background-color: #404040;
+    border-color: #4a90e2;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.2);
+}
+
+.chat.dark-mode p {
+    color: #f0f0f0;
+}
+
+#leave-btn.dark-mode {
+    background-color: #ff9800;
+    color: white;
+}
+
+#chat-layout.dark-mode {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#chat-name.dark-mode {
+    color: #e0e0e0;
+    border-bottom-color: #4a90e2;
+}
+
+#msg-display.dark-mode {
+    background-color: #333333;
+    color: #f0f0f0;
+}
+
+.msg-container.dark-mode {
+    background-color: #404040;
+    border-left-color: #4a90e2;
+    color: #f0f0f0;
+}
+
+.msg-container.dark-mode.your-msg {
+    background-color: #2d5016;
+    border-left-color: #66bb6a;
+}
+
+.msg-username-date.dark-mode {
+    color: #b0b0b0;
+}
+
+.msg-text.dark-mode {
+    color: #f0f0f0;
+}
+
+.delete-msg-btn.dark-mode {
+    background-color: #f44336;
+    color: white;
+}
+
+.delete-msg-btn.dark-mode:hover {
+    background-color: #da190b;
+}
+
+#send-msg-input.dark-mode {
+    background-color: #333333;
+    border-color: #444444;
+}
+
+#message-send-bar.dark-mode {
+    background-color: #404040;
+    color: #f0f0f0;
+    border-color: #555555;
+}
+
+#message-send-bar.dark-mode:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 4px rgba(74, 144, 226, 0.3);
+}
+
+#send-msg-btn.dark-mode {
+    background-color: #4a90e2;
+    color: white;
+}
+
+#send-msg-btn.dark-mode:hover {
+    background-color: #357abd;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+#main-chat-page > ul.dark-mode {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#chat-users-header.dark-mode {
+    color: #e0e0e0;
+    background-color: #333333;
+    border-left-color: #4a90e2;
+}
+
+.chat-user-list.dark-mode {
+    background-color: #333333;
+    color: #f0f0f0;
+    border-color: #444444;
+}
+
+.chat-user-list.dark-mode:hover {
+    background-color: #404040;
+}
+
+.desc-friends.dark-mode {
+    color: #b0b0b0;
+}
+
+#add-members-btn.dark-mode {
+    background-color: #4a90e2;
+    color: white;
+}
+
+#add-members-btn.dark-mode:hover {
+    background-color: #357abd;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.accept-req-btn.dark-mode {
+    background-color: #66bb6a;
+    color: white;
+}
+
+.accept-req-btn.dark-mode:hover {
+    background-color: #558b2f;
+}
+
+.reject-req-btn.dark-mode {
+    background-color: #f44336;
+    color: white;
+}
+
+.reject-req-btn.dark-mode:hover {
+    background-color: #da190b;
+}
+
+.cancel-req-btn.dark-mode {
+    background-color: #ff9800;
+    color: white;
+}
+
+.cancel-req-btn.dark-mode:hover {
+    background-color: #e68900;
+}
+
+.send-friend-req-btn.dark-mode {
+    background-color: #2196f3;
+    color: white;
+}
+
+.send-friend-req-btn.dark-mode:hover {
+    background-color: #1565c0;
+}
+
+.kick-btn.dark-mode {
+    background-color: #f44336;
+    color: white;
+}
+
+.kick-btn.dark-mode:hover {
+    background-color: #da190b;
+}
+
+#display-user-details.dark-mode {
+    background: linear-gradient(135deg, #2a2a2a 0%, #333333 100%);
+    border-color: #4a90e2;
+    color: #f0f0f0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+#close-user-details.dark-mode {
+    background-color: #f44336;
+    color: white;
+}
+
+#close-user-details.dark-mode:hover {
+    background-color: #da190b;
+}
+
+#display-user-username.dark-mode {
+    color: #e0e0e0;
+}
+
+#creation-date.dark-mode,
+#joined-date.dark-mode,
+#display-user-description.dark-mode,
+#friends-since.dark-mode {
+    color: #b0b0b0;
+}
+
+#display-user-description.dark-mode {
+    background-color: #404040;
+    border-left-color: #4a90e2;
+}
+
+#display-user-details.dark-mode::-webkit-scrollbar-track {
+    background: #2a2a2a;
+}
+
+#display-user-details.dark-mode::-webkit-scrollbar-thumb {
+    background: #555555;
+}
+
+#display-user-details.dark-mode::-webkit-scrollbar-thumb:hover {
+    background: #777777;
+}
+
+#create-chats-popup.dark-mode {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+#create-chats-popup.dark-mode h2 {
+    color: #e0e0e0;
+}
+
+.create-chat-friends.dark-mode {
+    background-color: #333333;
+    color: #f0f0f0;
+    border-color: #444444;
+}
+
+.create-chat-friends.dark-mode:hover {
+    background-color: #404040;
+    border-color: #4a90e2;
+}
+
+.create-chat-friends.dark-mode.selected {
+    background-color: #4a90e2;
+    color: white;
+    border-color: #357abd;
+}
+
+#get-chat-name.dark-mode {
+    background-color: #333333;
+    color: #f0f0f0;
+    border-color: #444444;
+}
+
+#get-chat-name.dark-mode::placeholder {
+    color: #999999;
+}
+
+#get-chat-name.dark-mode:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 4px rgba(74, 144, 226, 0.3);
+}
+
+#create-chat-btn.dark-mode {
+    background-color: #4a90e2;
+    color: white;
+}
+
+#create-chat-btn.dark-mode:hover {
+    background-color: #357abd;
+}
+
+#close-create-chats-popup.dark-mode {
+    background-color: #f44336;
+    color: white;
+}
+
+#close-create-chats-popup.dark-mode:hover {
+    background-color: #da190b;
+}
+
+#popup-display-msg.dark-mode {
+    color: #ff6b6b;
+}
+
+#add-friends-container.dark-mode {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+#add-friends-container.dark-mode h2 {
+    color: #e0e0e0;
+}
+
+.add-members.dark-mode {
+    background-color: #333333;
+    color: #f0f0f0;
+    border-color: #444444;
+}
+
+.add-members.dark-mode:hover {
+    background-color: #404040;
+    border-color: #4a90e2;
+}
+
+.add-members.dark-mode.selected {
+    background-color: #4a90e2;
+    color: white;
+    border-color: #357abd;
+}
+
+#close-add-members-popup.dark-mode {
+    background-color: #f44336;
+    color: white;
+}
+
+#close-add-members-popup.dark-mode:hover {
+    background-color: #da190b;
 }

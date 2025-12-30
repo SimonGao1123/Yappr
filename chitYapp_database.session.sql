@@ -84,8 +84,21 @@ CREATE TABLE Messages (
         REFERENCES Users(user_id)
 );
 
+-- ADD MORE LATER
+CREATE TABLE Settings (
+    user_id INT NOT NULL,
+    light_mode BOOL DEFAULT TRUE,
+
+    PRIMARY KEY (user_id),
+
+    CONSTRAINT fk_settings_user_id
+        FOREIGN KEY (user_id)
+        REFERENCES Users(user_id)
+);
+
 -- @block
 DROP TABLE Messages;
+DROP TABLE Settings;
 DROP TABLE Chat_Users;
 DROP TABLE Chats;
 DROP TABLE Friends;
@@ -97,3 +110,4 @@ SELECT * FROM Friends;
 SELECT * FROM Chats;
 SELECT * FROM Chat_Users;
 SELECT * FROM Messages;
+SELECT * FROM Settings;

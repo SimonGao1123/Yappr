@@ -1,19 +1,62 @@
 import { useState } from 'react'
 import { useEffect } from 'react';
+import './Settings.css';
 
-function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser}) {
-    // TODO (after styling chats page):
+function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser, ifLightMode, setIfLightMode}) {
     return (
-        <main id="settings-main">
-            <AlterDescription currentUser={currentUser}/>
+        <main id="settings-main" className={!ifLightMode?"dark-mode":""}>
+            <AlterDescription currentUser={currentUser} ifLightMode={ifLightMode}/>
 
+            <ThemeToggle ifLightMode={ifLightMode} setIfLightMode={setIfLightMode} currentUser={currentUser}/>
             
-            
-            <button onClick={() => logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex)} id="logout-btn">Logout</button>
+            <button onClick={() => logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex)} id="logout-btn" className={!ifLightMode?"dark-mode":""}>Logout</button>
         </main>
     );
 }
 
+function ThemeToggle ({ifLightMode, setIfLightMode, currentUser}) {
+    return (
+        <div id="light-mode-toggle" className={!ifLightMode?"dark-mode":""}>
+            <h2 className={!ifLightMode?"dark-mode":""}>Theme</h2>
+            <div id="theme-options">
+                <label htmlFor="dark-mode-radio" className={!ifLightMode?"dark-mode":""}>
+                    <input 
+                        type="radio" 
+                        id="dark-mode-radio" 
+                        className={!ifLightMode?"dark-mode":""} 
+                        checked={!ifLightMode} 
+                        onChange={() => setLightDarkMode(setIfLightMode, false, currentUser.id)}
+                    />
+                    Dark Mode
+                </label>
+                <label htmlFor="light-mode-radio" className={!ifLightMode?"dark-mode":""}>
+                    <input 
+                        type="radio" 
+                        id="light-mode-radio" 
+                        className={!ifLightMode?"dark-mode":""} 
+                        checked={ifLightMode} 
+                        onChange={() => setLightDarkMode(setIfLightMode, true, currentUser.id)}
+                    />
+                    Light Mode
+                </label>
+            </div>
+        </div>
+    );
+}
+
+function setLightDarkMode (setIfLightMode, ifLightMode, user_id) {
+    fetch("http://localhost:3000/settings/switchLightDarkMode", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ifLightMode, user_id})
+    }).then(async res => {
+        const parsed = await res.json();
+        console.log(parsed);
+    }).catch(err => {
+        console.log(err);
+    });
+    setIfLightMode(ifLightMode);
+}
 function logOutFunction (setCurrentUser, setLoginStatus, setDisplayIndex) {
     fetch("http://localhost:3000/userLogins/logout", {
         method: "POST",
@@ -32,7 +75,7 @@ function logOutFunction (setCurrentUser, setLoginStatus, setDisplayIndex) {
 
 }
 
-function AlterDescription ({currentUser}) {
+function AlterDescription ({currentUser, ifLightMode}) {
     const [description, setDescription] = useState("");
     const [displayMsg, setDisplayMsg] = useState("");
 
@@ -72,11 +115,11 @@ function AlterDescription ({currentUser}) {
     }, [currentUser?.id]);
 
     return (
-        <div id="description-alter-section">
-            <h2>Update Description</h2>
-            <input placeholder='Description' id="description" type='text' value={description} onChange={(e) => setDescription(e.target.value)}/>
-            <button id="update-description-btn" onClick={() => updateDescription()}>Update</button>
-            <p id="display-description-msg">{displayMsg}</p>
+        <div id="description-alter-section" className={!ifLightMode?"dark-mode":""}>
+            <h2 className={!ifLightMode?"dark-mode":""}>Update Description</h2>
+            <textarea placeholder='Description' id="description" className={!ifLightMode?"dark-mode":""} value={description} onChange={(e) => setDescription(e.target.value)}/>
+            <button id="update-description-btn" className={!ifLightMode?"dark-mode":""} onClick={() => updateDescription()}>Update</button>
+            <p id="display-description-msg" className={!ifLightMode?"dark-mode":""}>{displayMsg}</p>
         </div>
     );
 }

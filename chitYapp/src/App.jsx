@@ -7,6 +7,7 @@ import ChatsPage from './ChatsPage/ChatsPage.jsx';
 import Settings from './SettingsPage/Settings.jsx';
 
 import settingsIcon from './images/Gear-icon.png';
+import settingsIconDark from './images/Gear-icon-Dark.png';
 function App() {
     // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
@@ -26,6 +27,8 @@ function App() {
     2 = settings page
     */
 
+    const [ifLightMode, setIfLightMode] = useState(true); // true for light mode, false for dark mode
+
     // runs every time refresh
     useEffect(() => {
       fetch("http://localhost:3000/userLogins/me", {
@@ -44,6 +47,18 @@ function App() {
       });
 
     }, []); // will run everytime url path is changed, automatically logs in with user session
+
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        fetch(`http://localhost:3000/settings/ifLightMode/${currentUser.id}`, {
+            method: "GET"
+        }).then(async res => {
+            const data = await res.json();
+            if (data.success) {
+                setIfLightMode(data.light_mode);
+            }
+        });
+    }, [currentUser?.id]);
 
     // auto update of friends
     function getCurrentFriends () {
@@ -117,14 +132,17 @@ function App() {
       <>
         <NavBar  
         setDisplayIndex={setDisplayIndex}
-        displayIndex={displayIndex}/>
+        displayIndex={displayIndex}
+        ifLightMode={ifLightMode}
+        />
 
-        <main id="app-main-section">
+        <main style={!ifLightMode?{backgroundColor: "#1e1e1e"}:{}} id="app-main-section">
           
           {displayIndex===0?
           <ChatsPage
           currentUser={currentUser}
           currentFriends={currentFriends}
+          ifLightMode={ifLightMode}
           />
           : displayIndex===1?
           <FriendsPage
@@ -135,6 +153,7 @@ function App() {
             incomingFriendReq={incomingFriendReq}
             setInFriendReq={setInFriendReq}
             currentUser={currentUser}
+            ifLightMode={ifLightMode}
           />
           : displayIndex=== 2?
           <Settings
@@ -142,11 +161,13 @@ function App() {
           setLoginStatus={setLoginStatus}
           setDisplayIndex={setDisplayIndex}
           currentUser={currentUser}
+          ifLightMode={ifLightMode} 
+          setIfLightMode={setIfLightMode}
           />
           :
           <></>}
           {currentUser ? 
-          <div id="user-info-container"><p id="user-info">Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div> : <></>}
+          <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div> : <></>}
         </main>
         
       </>
@@ -159,15 +180,16 @@ function App() {
     </>
   );
 }
-function NavBar ({setDisplayIndex, displayIndex}) {
+function NavBar ({ifLightMode, setDisplayIndex, displayIndex}) {
   return (
   <>
     <div id="top-bar">
       <nav>
-        <button className={`nav-btn ${displayIndex===0?"active-tab":""}`} onClick={() => setDisplayIndex(0)} id="nav-chats-btn">Chats</button>
-        <button className={`nav-btn ${displayIndex===1?"active-tab":""}`} onClick={() => setDisplayIndex(1)} id="nav-friends-btn">Friends</button>
+        <button className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(0)} id="nav-chats-btn">Chats</button>
+        <button className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(1)} id="nav-friends-btn">Friends</button>
       </nav>
-      <button className={`nav-btn ${displayIndex===2?"active-tab":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}><img src={settingsIcon} alt="Settings" id="settings-icon"/></button>
+      <button className={`nav-btn ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
+        <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></button>
     </div>
   </>  
   );
