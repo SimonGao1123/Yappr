@@ -52,6 +52,11 @@ router.post("/login", async (req, res) => {
             return res.status(401).json({message: "Username or Email doesn't exist", success: false});
         }
 
+        if (rows[0].user_id === -1) {
+            return res.status(401).json({message: `Invalid Username/Password`, success: false});
+            // accidentally logged into server account (NOT)
+        }
+
         const stored = rows[0].password;
         if (comparePassword(password, stored)) {
             req.session.userID = rows[0].user_id;
@@ -102,7 +107,103 @@ router.post("/register", async (req, res) => {
         }
         console.log("Error in registration: ", error);
     }
-})
+});
+
+// 2 weeks between last updated date and now
+router.post("/updateUsername", async (req, res) => {
+    const {username, user_id, newUsername} = req.body;
+
+    
+    if (!newUsername || !user_id) {
+        return res.status(401).json({success: false, message: "Invalid username"});
+    }
+    if (username === newUsername) {
+        return res.status(401).json({success: false, message: "Username needs to be different"});
+
+    }
+    try {
+        const [rows] = await db.promise().query(
+            'SELECT last_updated_username FROM Users WHERE user_id=?',
+            [user_id]
+        );
+        if (rows.length === 0) {
+            return res.status(401).json({success: false, message: "Invalid user"});
+        }
+        if (!isTwoWeeksOrOlder(rows[0].last_updated_username)) {
+            return res.status(401).json({success: false, message: `Can only change username every 2 weeks, last updated: ${formatDateTimeSmart(rows[0].last_updated_username)}`});
+        }
+        
+        await db.promise().query(
+            'UPDATE Users SET last_updated_username=CURRENT_TIMESTAMP, username=? WHERE user_id=?',
+            [newUsername, user_id]
+        );
+        req.session.username = newUsername;
+        req.session.save(err => {
+            if (err) {
+                console.error("Session save error:", err);
+                return res.status(500).json({ success: false, message: "Could not update session" });
+            }
+
+    // Return the updated user info immediately
+        return res.status(201).json({
+            success: true,
+            message: `Successfully updated username to ${newUsername}`,
+            user: { id: user_id, username: newUsername }
+        });
+    });
+        
+    } catch (error) {
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(401).json({success: false, message: "Username already exists"});
+        }
+        console.log("Error occurred: ", error);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+});
+
+function isTwoWeeksOrOlder(lastUpdatedDate) {
+  if (!lastUpdatedDate) return false;
+
+  // Convert MySQL timestamp to JS Date
+  const updatedDate = new Date(lastUpdatedDate);
+
+  // Guard against invalid date
+  if (isNaN(updatedDate.getTime())) return false;
+
+  const now = new Date();
+
+  // 2 weeks in milliseconds
+  const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+
+  return (now - updatedDate) >= TWO_WEEKS_MS;
+}
+function formatDateTimeSmart(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
+
+  const isSameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const options = {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  };
+
+  if (isSameDay) {
+    // Return only time if same day
+    return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  } else {
+    // Return full date and time
+    return date.toLocaleString("en-US", options);
+  }
+}
+
 // return encrypted password to be added to loginInfo.json
 function encryptPassword (password) {
     const salt = crypto.randomBytes(16).toString('hex'); // adds salt

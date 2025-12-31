@@ -4,6 +4,8 @@ import './ChatsPage.css';
 import MessagingSection from './MessagingSection/MessagingSection.jsx';
 
 import leaveChatIcon from '../images/leaveChatIcon.png';
+import editChatNameIcon from '../images/edit-chat-name-icon.png';
+import updateChatNameIcon from '../images/update-chat-name-icon.png';
 
 function ChatsPage ({currentUser, currentFriends, ifLightMode}) {
     // currentFriends holds array of {user_id, username, friend_id}
@@ -124,6 +126,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                     chat_id={selectedChat.chat_id}   
                     currentUser={currentUser}
                     ifLightMode={ifLightMode}
+                    selectedChat={selectedChat}
                 /> 
                 <UsersLayout
                     addMembersDisplay={addMembersDisplay}
@@ -143,12 +146,27 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
     );
 
 }
-function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode}) {
+function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat}) {
     // middle column
+
+    const [editingChatName, setEditingChatName] = useState(false);
+    const [newChatName, setNewChatName] = useState(chat_name);
     return (
         
         <div id="chat-layout" className={!ifLightMode?"dark-mode":""}>
-            <p id="chat-name" className={!ifLightMode?"dark-mode":""}>{chat_name}</p>
+            <p id="chat-name" className={!ifLightMode?"dark-mode":""}>
+                {editingChatName ? <input className={!ifLightMode?"dark-mode":""} placeholder="New chat name" id="new-chat-name-input" type='text' maxLength={30} value={newChatName} onChange={(e) => setNewChatName(e.target.value)}/> : chat_name}    
+                {selectedChat.creator_id===currentUser.id ? 
+                editingChatName?
+                <button className={!ifLightMode?"dark-mode":""} id="update-chat-name-btn" onClick={() => editChatName(setEditingChatName, newChatName, chat_id, currentUser.id, selectedChat.creator_id, currentUser.username)}>
+                    <img src={updateChatNameIcon} id="update-chat-icon" alt="update"/>
+                </button>
+                :
+                <button className={!ifLightMode?"dark-mode":""} id="edit-chat-name-btn" onClick={() => setEditingChatName(!editingChatName)}>
+                    <img src={editChatNameIcon} id="edit-chat-icon" alt="edit"/>
+                </button>
+                
+                :<></>}</p>
             <MessagingSection
             currentUser={currentUser}
             chat_id={chat_id}
@@ -157,6 +175,20 @@ function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode}) {
         </div>
         
     );
+}
+
+function editChatName (setEditingChatName, newChatName, chat_id, user_id, creator_id, username) {
+    setEditingChatName(false);
+    fetch("http://localhost:3000/chats/editChatName", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({newChatName, chat_id, user_id, creator_id, username})
+    }).then(async response => {
+        const parsed = await response.json();
+        console.log(parsed.message);
+    }).catch(err => {
+        console.log(err);
+    })  
 }
 function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userList, creator_id, currentUser, currentFriends, ifLightMode}) {
     // userList contains array of {friend_id (could be null), user_id, status, username}
@@ -296,7 +328,7 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
             <button
                 id="add-members-btn"
                 className={!ifLightMode?"dark-mode":""}
-                onClick={() => addMembers(currentUser.username, currentUser.id, addedFriends, chat_id)}
+                onClick={() => addMembers(currentUser.username, currentUser.id, addedFriends, chat_id, setAddMembersDisplay)}
             >
                 Add
             </button>
@@ -325,7 +357,12 @@ function formatDateTimeSmart(isoString) {
   // Same day → just date + time (no weekday)
   return date.toLocaleString("en-US", options);
 }
-function addMembers (username, user_id, addedFriends, chat_id) {
+function addMembers (username, user_id, addedFriends, chat_id, setAddMembersDisplay) {
+    setAddMembersDisplay(false);
+    if (addedFriends.length === 0) {
+        console.log("No friends selected");
+        return;
+    }
     fetch("http://localhost:3000/chats/addToChat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -487,16 +524,16 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, 
                 {friendsDisplay}
             </ul>
             <input placeholder="Chat Name" id="get-chat-name" className={!ifLightMode?"dark-mode":""} value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
-            <button id="create-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={() => createChat(currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg)}>Create Chat</button>
+            <button id="create-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={() => createChat(currentUser.username, currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg)}>Create Chat</button>
             <p id="popup-display-msg" className={!ifLightMode?"dark-mode":""}>{displayMsg}</p>
         </div>
     )
 }
-function createChat (creator_id, addedFriends, chat_name, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg) {
+function createChat (creator_username, creator_id, addedFriends, chat_name, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg) {
     fetch("http://localhost:3000/chats/createChat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({creator_id, addedFriends, chat_name})
+        body: JSON.stringify({creator_username, creator_id, addedFriends, chat_name})
     }).then(async response => {
         const parsed = await response.json();
         console.log(parsed.message);

@@ -14,9 +14,8 @@ router.post("/sendFriendRequest", async (req, res) => {
     const {sender_id, receiver_id} = req.body;
     let usernameReceiver; // stores username of user receiving request
     let idReceiver;
-
     try {
-        if (!receiver_id) {
+        if (!receiver_id || Number(receiver_id) === -1) {
             return res.status(401).json({success: false, message: "Invalid User ID/Username"});
         }
 
@@ -46,6 +45,10 @@ router.post("/sendFriendRequest", async (req, res) => {
 
         if (Number(idReceiver) === sender_id) {
             return res.status(401).json({success: false, message: "Cannot send friend request to yourself"});
+        }
+        if (Number(idReceiver) === -1) {
+            return res.status(401).json({success: false, message: "Invalid User ID/Username"});
+            // sent to server user
         }
 
         const checkCurrStatus = await db.promise().query(

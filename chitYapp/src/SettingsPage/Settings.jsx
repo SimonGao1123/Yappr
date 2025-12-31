@@ -5,6 +5,7 @@ import './Settings.css';
 function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser, ifLightMode, setIfLightMode}) {
     return (
         <main id="settings-main" className={!ifLightMode?"dark-mode":""}>
+            <UpdateUsername setCurrentUser={setCurrentUser} currentUser={currentUser} ifLightMode={ifLightMode}/>
             <AlterDescription currentUser={currentUser} ifLightMode={ifLightMode}/>
 
             <ThemeToggle ifLightMode={ifLightMode} setIfLightMode={setIfLightMode} currentUser={currentUser}/>
@@ -13,7 +14,37 @@ function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser
         </main>
     );
 }
+function UpdateUsername ({currentUser, ifLightMode, setCurrentUser}) {
+    const [displayMsg, setDisplayMsg] = useState("");
+    const [newUsername, setNewUsername] = useState(currentUser.username);
 
+    return (
+
+        <div className={!ifLightMode?"dark-mode":""} id="update-username-section">
+            <h2 className={!ifLightMode?"dark-mode":""}>Update Username</h2>
+            <input className={!ifLightMode?"dark-mode":""} class id="update-username-input" type='text' maxLength={30} value={newUsername} onChange={(e) => setNewUsername(e.target.value)}/>
+            <button id="update-username-btn" onClick={() => updateUsernameFunction(currentUser, currentUser.id, newUsername, setDisplayMsg, setCurrentUser)}>Update</button>
+            <p id="display-msg-update-username-input">{displayMsg}</p>
+        </div>
+    );
+}
+function updateUsernameFunction(currentUser, user_id, newUsername, setDisplayMsg, setCurrentUser) {
+    fetch("http://localhost:3000/userLogins/updateUsername", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "include",
+        body: JSON.stringify({username: currentUser.username, user_id, newUsername})
+    }).then(async res => {
+        const parsed = await res.json();
+        setDisplayMsg(parsed.message);
+        if (parsed.success) {
+            setCurrentUser(parsed.user);
+        }
+        console.log(parsed);
+    }).catch(err => {
+        console.log(err);
+    });
+}
 function ThemeToggle ({ifLightMode, setIfLightMode, currentUser}) {
     return (
         <div id="light-mode-toggle" className={!ifLightMode?"dark-mode":""}>

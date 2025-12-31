@@ -5,7 +5,7 @@ import { use } from 'react';
 const router = express.Router();
 
 router.post("/createChat", async (req, res) => {
-    const {creator_id, addedFriends, chat_name} = req.body;
+    const {creator_id, creator_username, addedFriends, chat_name} = req.body;
     if (addedFriends.length > 14) return res.status(401).json({success: false, message: "Maximum of 15 members"});
     // addedFriends will be array of objects
     // {username, user_id, friend_id}
@@ -45,6 +45,13 @@ router.post("/createChat", async (req, res) => {
                 [insertedId, user_id]
             );
         }
+
+        // Server creates opening message
+        await db.promise().query(
+            'INSERT INTO Messages (chat_id, sender_id, message) VALUES(?,?,?)',
+            [insertedId, -1, `${creator_username} has created chat: "${chat_name}"`]
+        );
+
         return res.status(201).json({success: true, message: `Successfully created ${chat_name}`})
 
     } catch (err) {
@@ -77,7 +84,8 @@ router.post("/leaveChat", async (req, res) => {
             await db.promise().query(
                 'DELETE FROM Chats WHERE chat_id=?', [chat_id]
             );
-            
+    
+
             return res.status(201).json({success: true, message: "Successfully deleted group"});
         }
         // check if user is leader, then pass on leadership
@@ -96,6 +104,11 @@ router.post("/leaveChat", async (req, res) => {
                 'SELECT username FROM Users WHERE user_id = ?',
                 [rowsUsersInGroup[1].user_id]
             );
+
+            await db.promise().query(
+            'INSERT INTO Messages (chat_id, sender_id, message) VALUES(?,?,?)',
+            [chat_id, -1, `${username} has left, ${newLeaderUsername[0][0].username} is the new leader`]
+            );
             return res.status(201).json({success: true, message: `${username} has left the chat, ${newLeaderUsername[0][0].username} is the new leader`}); 
         }
 
@@ -103,6 +116,11 @@ router.post("/leaveChat", async (req, res) => {
         await db.promise().query(
             'DELETE FROM Chat_Users WHERE user_id=? AND chat_id=?',
             [user_id, chat_id]
+        );
+        
+        await db.promise().query(
+            'INSERT INTO Messages (chat_id, sender_id, message) VALUES(?,?,?)',
+            [chat_id, -1, `${username} has left the chat`]
         );
         return res.status(201).json({success: true, message: `${username} has left the chat`});
 
@@ -315,6 +333,12 @@ router.post("/addToChat", async (req, res) => {
             );
             finalMessage.push(`${username} has added ${friend.username} to the chat`);
         }
+
+        const compressedUsernameList = addedFriends.map((friend) => friend.username).join(", ");
+        await db.promise().query(
+            'INSERT INTO Messages (chat_id, sender_id, message) VALUES(?,?,?)',
+            [chat_id, -1, `${username} has added: ${compressedUsernameList} to the chat`]
+        );
         return res.status(201).json({success: true, message: finalMessage});
         // note if success is true then message will be an array
         
@@ -349,6 +373,11 @@ router.post("/kick", async (req, res) => {
             'DELETE FROM Chat_Users WHERE chat_id=? AND user_id=?',
             [chat_id, kicked_id]
         );
+
+        await db.promise().query(
+            'INSERT INTO Messages (chat_id, sender_id, message) VALUES(?,?,?)',
+            [chat_id, -1, `${user_username} has kicked ${kicked_username} from the chat`]
+        );
         return res.status(201).json({success: true, message: `${kicked_username} was kicked by ${user_username}`});
     } catch (err) {
         console.log(err);
@@ -356,4 +385,31 @@ router.post("/kick", async (req, res) => {
     }
 });
 
+router.post("/editChatName", async (req, res) => {
+    const {newChatName, chat_id, user_id, creator_id, username} = req.body;
+
+    if (!newChatName || !creator_id || !chat_id || !user_id || !username) {
+        return res.status(401).json({success: false, message: "Invalid"});
+    }
+
+    try {
+        // check if user is creator
+        if (user_id !== creator_id) {
+            return res.status(401).json({success: false, message: "User is not the creator"});
+        }
+
+        await db.promise().query(
+            'UPDATE Chats SET chat_name=? WHERE chat_id=?',
+            [newChatName, chat_id]
+        );
+        await db.promise().query(
+            'INSERT INTO Messages (chat_id, sender_id, message) VALUES(?,?,?)',
+            [chat_id, -1, `${username} changed the chat name to ${newChatName}`]
+        );
+        return res.status(201).json({success: true, message: "Successfully changed chat name"});
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({success: false, message: "Internal server error"});
+    }
+});
 export default router;

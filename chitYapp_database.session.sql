@@ -7,9 +7,13 @@ CREATE TABLE Users (
     email VARCHAR(225) NOT NULL UNIQUE,
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     description TEXT,
+    last_updated_username TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (user_id)
 );
+
+-- TO DISPLAY MESSAGES FROM SERVER IN A SPECIFIC CHAT (user_id -1)
+INSERT INTO Users (user_id, username, password, email) VALUES (-1, "server", 0, "TEMPLATE");
 
 
 CREATE UNIQUE INDEX uniq_username ON Users(username);

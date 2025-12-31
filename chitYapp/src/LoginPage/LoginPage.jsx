@@ -15,7 +15,7 @@ function LoginPage ({setLoginStatus, setCurrentUser}) {
 
     
     function resetAllFields () {
-        setLoginUsername("");
+        setLoginUserEmail("");
         setLoginPassword("");
         setRegisterUsername("");
         setRegisterPassword("");

@@ -36,14 +36,23 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode})
         // each message is {message_id, sender_id, message, username, sent_at}
         const {message_id, sender_id, message, username, sent_at} = messageData;
 
-        messageDisplay.push(
-            <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
-                <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
-                <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
-
-                {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
+        if (sender_id === -1) {
+            // server message different format
+            messageDisplay.push(
+            <li className='server-msg-container'>
+                <p className='msg-text'>{message} {formatDateTimeSmart(sent_at)}</p>
             </li>
-        );
+            );
+        } else {
+            messageDisplay.push(
+                <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
+                    <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
+                    <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
+
+                    {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
+                </li>
+            );
+        }
     }
 
     return (
