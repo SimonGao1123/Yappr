@@ -9,6 +9,9 @@ import settingsRoutes from './routes/settingsRoutes.js';
 
 import session from 'express-session'; 
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 const app = express();
 app.use(express.json());
 
@@ -18,16 +21,16 @@ app.use(cors({
 })); // TEMPORARY
 
 app.use(session({
-  name: "chat.sid",
-  secret: "super-secret-key", // TEMPORARY, NEED TO SECURE IN .ENV
+  name: 'chat.sid',
+  secret: process.env.SESSION_SECRET, // must be set
   resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: true,     // can’t be read by JS (good)
-    maxAge: 1000 * 60 * 60 * 24, // 1 day
-    sameSite: "lax",   // allows cross-origin cookies
-    secure: false       // must be false on localhost
-  }
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  },
 }));
 
 

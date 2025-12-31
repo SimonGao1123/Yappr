@@ -14,6 +14,7 @@ dist-ssr
 
 # Ignore database.js in backend folder
 backend/database.js
+backend/.env
 
 # Editor directories and files
 .vscode/*
