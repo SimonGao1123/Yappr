@@ -97,7 +97,7 @@ function formatDateTimeSmart(isoString) {
   return date.toLocaleString("en-US", options);
 }
 function getPastMessages (user_id, setMessageData, chat_id) {
-    fetch(`http://localhost:3000/message/getMessages/${user_id}`, {
+    fetch(`/message/getMessages/${user_id}`, {
         method: "GET"
     }).then(async response => {
         const parsed = await response.json();
@@ -118,7 +118,7 @@ function getPastMessages (user_id, setMessageData, chat_id) {
 
 }
 function sendMessage (chat_id, message, user_id, setMessage) {
-    fetch("http://localhost:3000/message/sendMessage", {
+    fetch("/message/sendMessage", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({chat_id, message, user_id})
@@ -133,7 +133,7 @@ function sendMessage (chat_id, message, user_id, setMessage) {
     readMessages(chat_id, user_id)
 }
 function deleteMessage (message_id, user_id, sender_id, chat_id) {
-    fetch("http://localhost:3000/message/deleteMessage", {
+    fetch("/message/deleteMessage", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({message_id, user_id, sender_id, chat_id})
@@ -146,7 +146,7 @@ function deleteMessage (message_id, user_id, sender_id, chat_id) {
 }
 // is called automatically when a message is sent in the chat
 function readMessages (chat_id, user_id) {
-    fetch("http://localhost:3000/message/readMessages", {
+    fetch("/message/readMessages", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({chat_id, user_id})

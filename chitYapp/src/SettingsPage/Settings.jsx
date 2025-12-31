@@ -29,7 +29,7 @@ function UpdateUsername ({currentUser, ifLightMode, setCurrentUser}) {
     );
 }
 function updateUsernameFunction(currentUser, user_id, newUsername, setDisplayMsg, setCurrentUser) {
-    fetch("http://localhost:3000/userLogins/updateUsername", {
+    fetch("/userLogins/updateUsername", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         credentials: "include",
@@ -76,7 +76,7 @@ function ThemeToggle ({ifLightMode, setIfLightMode, currentUser}) {
 }
 
 function setLightDarkMode (setIfLightMode, ifLightMode, user_id) {
-    fetch("http://localhost:3000/settings/switchLightDarkMode", {
+    fetch("/settings/switchLightDarkMode", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ifLightMode, user_id})
@@ -89,7 +89,7 @@ function setLightDarkMode (setIfLightMode, ifLightMode, user_id) {
     setIfLightMode(ifLightMode);
 }
 function logOutFunction (setCurrentUser, setLoginStatus, setDisplayIndex) {
-    fetch("http://localhost:3000/userLogins/logout", {
+    fetch("/userLogins/logout", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         credentials: "include"
@@ -111,7 +111,7 @@ function AlterDescription ({currentUser, ifLightMode}) {
     const [displayMsg, setDisplayMsg] = useState("");
 
     function updateDescription () {
-        fetch("http://localhost:3000/settings/setDescription", {
+        fetch("/settings/setDescription", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({user_id: currentUser.id, description})
@@ -125,7 +125,7 @@ function AlterDescription ({currentUser, ifLightMode}) {
     }
 
     function getDescription () {
-        fetch(`http://localhost:3000/settings/getDescription/${currentUser.id}`, {
+        fetch(`/settings/getDescription/${currentUser.id}`, {
             method: "GET"
         }
         ).then(async res => {

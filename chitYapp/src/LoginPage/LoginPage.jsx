@@ -74,7 +74,7 @@ function UserLogin ({loginUserEmail, setLoginUserEmail, loginPassword, setLoginP
     function handleUserLogin (e) {
         e.preventDefault();
 
-        fetch("http://localhost:3000/userLogins/login", {
+        fetch("/userLogins/login", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             credentials: "include",
@@ -135,7 +135,7 @@ function UserRegister ({registerUsername, setRegisterUsername, registerPassword,
             return; 
         }
 
-        fetch("http://localhost:3000/userLogins/register", {
+        fetch("/userLogins/register", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({username: registerUsername, password: registerPassword, email: registerEmail})

@@ -1,8 +1,4 @@
-TO FINISH DEVELOPMENT: 
-
-- Make settings tab + style it
-
-- Fix user identifier at bottom left of pages
+(DONE) TO FINISH DEVELOPMENT: 
 
 
 DEBUGGING:
@@ -11,16 +7,12 @@ DEBUGGING:
 
 - ensure everything updates live
 
-- fix bug with displaying add members popup (still open when changing pages and displays old information)
-
 
 FUTURE ADDITIONS:
 
 - add matchmaking (new table to hold users in matchmaking and to assign them into chats)
 
 - add image attachment
-
-- add settings, able to change ui between light/dark mode + other customizability
 
 - allow image profile pictures + user descriptions (need to be added in database)
 

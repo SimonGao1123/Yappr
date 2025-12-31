@@ -179,7 +179,7 @@ function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat
 
 function editChatName (setEditingChatName, newChatName, chat_id, user_id, creator_id, username) {
     setEditingChatName(false);
-    fetch("http://localhost:3000/chats/editChatName", {
+    fetch("/chats/editChatName", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({newChatName, chat_id, user_id, creator_id, username})
@@ -363,7 +363,7 @@ function addMembers (username, user_id, addedFriends, chat_id, setAddMembersDisp
         console.log("No friends selected");
         return;
     }
-    fetch("http://localhost:3000/chats/addToChat", {
+    fetch("/chats/addToChat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({username, user_id, addedFriends, chat_id})
@@ -375,7 +375,7 @@ function addMembers (username, user_id, addedFriends, chat_id, setAddMembersDisp
     })   
 }
 function kickUser (creator_id, user_id, user_username, kicked_id, kicked_username, chat_id) {
-    fetch("http://localhost:3000/chats/kick", {
+    fetch("/chats/kick", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({creator_id, user_id, user_username, kicked_id, kicked_username, chat_id})
@@ -387,7 +387,7 @@ function kickUser (creator_id, user_id, user_username, kicked_id, kicked_usernam
     })
 }
 function readMessages (chat_id, user_id) {
-    fetch("http://localhost:3000/message/readMessages", {
+    fetch("/message/readMessages", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({chat_id, user_id})
@@ -400,7 +400,7 @@ function readMessages (chat_id, user_id) {
 }
 
 function deleteChat (user_id, chat_id, creator_id) {
-    fetch("http://localhost:3000/chats/deleteChat", {
+    fetch("/chats/deleteChat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({user_id, chat_id, creator_id})
@@ -412,7 +412,7 @@ function deleteChat (user_id, chat_id, creator_id) {
     })
 }
 function leaveChat (user_id, username, chat_id, creator_id) {
-    fetch("http://localhost:3000/chats/leaveChat", {
+    fetch("/chats/leaveChat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({user_id, username, chat_id, creator_id})
@@ -424,7 +424,7 @@ function leaveChat (user_id, username, chat_id, creator_id) {
     })
 }
 function sendRequest (sender_id, receiver_id) {
-    fetch("http://localhost:3000/friends/sendFriendRequest", {
+    fetch("/friends/sendFriendRequest", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({sender_id, receiver_id})
@@ -436,7 +436,7 @@ function sendRequest (sender_id, receiver_id) {
         });
 }
 function cancelRequest (friend_id, receiver_id, receiver_username) {
-        fetch("http://localhost:3000/friends/cancel", {
+        fetch("/friends/cancel", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, receiver_id, receiver_username})
@@ -448,7 +448,7 @@ function cancelRequest (friend_id, receiver_id, receiver_username) {
         });
 }
 function rejectRequest (friend_id, sender_username, sender_id) {
-        fetch("http://localhost:3000/friends/reject", {
+        fetch("/friends/reject", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
@@ -460,7 +460,7 @@ function rejectRequest (friend_id, sender_username, sender_id) {
         });
     }
     function acceptRequest (friend_id, sender_username, sender_id) {
-        fetch("http://localhost:3000/friends/accept", {
+        fetch("/friends/accept", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
@@ -473,7 +473,7 @@ function rejectRequest (friend_id, sender_username, sender_id) {
     }
 
 function getChatData (user_id, setAllChats) {
-    fetch(`http://localhost:3000/chats/displayChats/${user_id}`, {
+    fetch(`/chats/displayChats/${user_id}`, {
         method: "GET"
     }).then(async response => {
         const data = await response.json();
@@ -530,7 +530,7 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, 
     )
 }
 function createChat (creator_username, creator_id, addedFriends, chat_name, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg) {
-    fetch("http://localhost:3000/chats/createChat", {
+    fetch("/chats/createChat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({creator_username, creator_id, addedFriends, chat_name})

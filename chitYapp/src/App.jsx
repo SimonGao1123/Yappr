@@ -31,7 +31,7 @@ function App() {
 
     // runs every time refresh
     useEffect(() => {
-      fetch("http://localhost:3000/userLogins/me", {
+      fetch("/userLogins/me", {
         method: "GET",
         credentials: "include"
       }).then(async response => {
@@ -50,7 +50,7 @@ function App() {
 
     useEffect(() => {
         if (!currentUser?.id) return;
-        fetch(`http://localhost:3000/settings/ifLightMode/${currentUser.id}`, {
+        fetch(`/settings/ifLightMode/${currentUser.id}`, {
             method: "GET"
         }).then(async res => {
             const data = await res.json();
@@ -62,7 +62,7 @@ function App() {
 
     // auto update of friends
     function getCurrentFriends () {
-        fetch(`http://localhost:3000/friends/currFriends/${currentUser.id}`)
+        fetch(`/friends/currFriends/${currentUser.id}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -82,7 +82,7 @@ function App() {
     }, [currentUser?.id, currentFriends, displayIndex]);
 
     function getOutgoingRequests () {
-        fetch(`http://localhost:3000/friends/outgoingRequests/${currentUser.id}`, {
+        fetch(`/friends/outgoingRequests/${currentUser.id}`, {
             method: "GET"
         }).then(async response => {
             const data = await response.json();
@@ -105,7 +105,7 @@ function App() {
     }, [currentUser?.id, outgoingFriendReq, displayIndex]);
 
     function getIncomingReq () {
-        fetch(`http://localhost:3000/friends/incomingRequests/${currentUser.id}`, {
+        fetch(`/friends/incomingRequests/${currentUser.id}`, {
             method: "GET"
         }).then(async response => {
             const parsed = await response.json();

@@ -30,7 +30,7 @@ function SearchUsers ({searchBarInput, setSearchBarInput, currentUser, ifLightMo
 
     function addFriendFunction (e) {
         e.preventDefault();
-        fetch("http://localhost:3000/friends/sendFriendRequest", {
+        fetch("/friends/sendFriendRequest", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({sender_id: currentUser.id, receiver_id: searchBarInput})
@@ -61,7 +61,7 @@ function DisplayCurrentFriends ({currentFriends, ifLightMode}) {
     const friendsList = [];
 
     function unfriendFunction (friend_id, other_user_username, other_user_id) {
-        fetch("http://localhost:3000/friends/unfriend", {
+        fetch("/friends/unfriend", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, other_user_username, other_user_id})
@@ -95,7 +95,7 @@ function DisplayCurrentFriends ({currentFriends, ifLightMode}) {
 function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}) {
     
     function cancelRequest (friend_id, receiver_id, receiver_username) {
-        fetch("http://localhost:3000/friends/cancel", {
+        fetch("/friends/cancel", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, receiver_id, receiver_username})
@@ -131,7 +131,7 @@ function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}) {
 function DisplayIncomingRequests ({incomingFriendReq, ifLightMode}) {
     
     function rejectRequest (friend_id, sender_username, sender_id) {
-        fetch("http://localhost:3000/friends/reject", {
+        fetch("/friends/reject", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
@@ -143,7 +143,7 @@ function DisplayIncomingRequests ({incomingFriendReq, ifLightMode}) {
         });
     }
     function acceptRequest (friend_id, sender_username, sender_id) {
-        fetch("http://localhost:3000/friends/accept", {
+        fetch("/friends/accept", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
