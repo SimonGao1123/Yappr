@@ -40,7 +40,7 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode})
             // server message different format
             messageDisplay.push(
             <li className='server-msg-container'>
-                <p className='msg-text'>{message} {formatDateTimeSmart(sent_at)}</p>
+                <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message} {formatDateTimeSmart(sent_at)}</p>
             </li>
             );
         } else {
