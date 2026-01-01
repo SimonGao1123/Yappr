@@ -1,14 +1,11 @@
 (DONE) TO FINISH DEVELOPMENT: 
 
-
-DEBUGGING:
-
-- reread all routes, reduce amount of SQL queries and remove redundant information passed between front+backend
-
-- ensure everything updates live
-
-
 FUTURE ADDITIONS:
+- Rebrand + make logo
+
+- ensure styling on mobile is good too
+
+- gemeni chat bot (select option to talk to ai in chat and will give response through server)
 
 - add matchmaking (new table to hold users in matchmaking and to assign them into chats)
 
@@ -20,4 +17,6 @@ FUTURE ADDITIONS:
 
 - Mutual friends 
 
-FINAL: PRODUCTION
+- Remeber me button
+
+V1 LAUNCH = (DONE) FINAL: PRODUCTION
