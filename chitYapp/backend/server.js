@@ -24,9 +24,8 @@ import settingsRoutes from './routes/settingsRoutes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// IMPORTANT: publicDir points to the parent folder's "public" directory
-// (project root /public). Adjust only if your project layout differs.
-const publicDir = path.join(__dirname, '..', 'public');
+// Public directory is inside the backend folder (where vite builds to)
+const publicDir = path.join(__dirname, 'public');
 const indexPath = path.join(publicDir, 'index.html');
 
 const app = express();
