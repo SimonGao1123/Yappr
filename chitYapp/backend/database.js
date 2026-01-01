@@ -3,12 +3,14 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const pool = mysql.createPool({
-    host: "localhost",
-    user: "root",
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD,
-    database: "chityapp",
+    database: process.env.DB_NAME || "chityapp",
+    port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: true } : undefined
 });
 export default pool;
