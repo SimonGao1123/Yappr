@@ -3,15 +3,13 @@
 FUTURE ADDITIONS:
 - make logo
 
-- Switch database to PostgreSQL instead of mySQL (for future additions)
-
 - gemeni chat bot (select option to talk to ai in chat and will give response through server)
 
 - add matchmaking (new table to hold users in matchmaking and to assign them into chats)
 
 - add image attachment
 
-- allow image profile pictures + user descriptions (need to be added in database)
+- allow image profile pictures (need to be added in database)
 
 - make email used for forgot password or 2 step verification
 
