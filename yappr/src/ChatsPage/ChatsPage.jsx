@@ -12,6 +12,9 @@ function ChatsPage ({currentUser, currentFriends, ifLightMode}) {
     const [createChatsDisplay, setCreateChatsDisplay] = useState(false);
     const [addMembersDisplay, setAddMembersDisplay] = useState(false);
     const [allChats, setAllChats] = useState([]);
+    // Mobile view state: 'chats' | 'messages' | 'users'
+    const [mobileView, setMobileView] = useState('chats');
+    
     return (
         <>
             {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay} ifLightMode={ifLightMode}/> : <></>}
@@ -24,12 +27,15 @@ function ChatsPage ({currentUser, currentFriends, ifLightMode}) {
                 allChats={allChats}
                 setAllChats={setAllChats}
                 currentFriends={currentFriends}
-                ifLightMode={ifLightMode}/>
+                ifLightMode={ifLightMode}
+                mobileView={mobileView}
+                setMobileView={setMobileView}
+            />
         </>
     )
 }
 
-function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends, ifLightMode}) {
+function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends, ifLightMode, mobileView, setMobileView}) {
     const [selectedChat, setSelectedChat] = useState(null); // holds {chat object}
     const [filterChats, setFilterChats] = useState("");
 
@@ -58,6 +64,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
     } else {
         // chat no longer exists, clear selection
         setSelectedChat(null);
+        setMobileView('chats');
     }
 }, [allChats]);
 
@@ -69,6 +76,12 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
         
 
     }, [selectedChat]);
+
+    // Handle chat selection - switch to messages view on mobile
+    const handleChatSelect = (chat) => {
+        setSelectedChat(chat);
+        setMobileView('messages');
+    };
     
     const chat_list = [];
 
@@ -77,23 +90,31 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
         const {chat_name} = chat;
         chat_list.push(
             <li key={chat.chat_id}
-            onClick={() => setSelectedChat(chat)}
+            onClick={() => handleChatSelect(chat)}
             className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""} ${!ifLightMode?"dark-mode":""}`}
             >
                 <p className='chat-name-sec'>{chat_name} {chat.unread?"🔴 unread messages":""}</p>
                 
                 <div className="chat-button-container">
                     {chat.creator_id===currentUser.id ? 
-                    <button id="delete-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
+                    <button id="delete-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={(e) => {
+                        e.stopPropagation();
                         deleteChat(currentUser.id, chat.chat_id, chat.creator_id)
-                        if (chat.chat_id===selectedChat.chat_id) setSelectedChat(null);
+                        if (chat.chat_id===selectedChat?.chat_id) {
+                            setSelectedChat(null);
+                            setMobileView('chats');
+                        }
                         setAddMembersDisplay(false);
                     }}>Delete</button> 
                     : <></>}
-                    <button id="leave-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
+                    <button id="leave-btn" className={!ifLightMode?"dark-mode":""} onClick={(e) => {
+                        e.stopPropagation();
                         leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id)
-                        console.log(chat.chat_id + ", " + selectedChat.chat_id);
-                        if (chat.chat_id===selectedChat.chat_id) setSelectedChat(null);
+                        console.log(chat.chat_id + ", " + selectedChat?.chat_id);
+                        if (chat.chat_id===selectedChat?.chat_id) {
+                            setSelectedChat(null);
+                            setMobileView('chats');
+                        }
                         setAddMembersDisplay(false);
                     }}><img alt="Leave" className="leave-chat-icon" src={leaveChatIcon}/></button>
 
@@ -104,7 +125,45 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
 
     return (
         <>
-        <main id="main-chat-page" className={!ifLightMode?"dark-mode":""}>
+        <main id="main-chat-page" className={`${!ifLightMode?"dark-mode":""} mobile-view-${mobileView}`}>
+
+            {/* Mobile Navigation Arrows - only visible when chat selected */}
+            {selectedChat && (
+                <div className={`mobile-nav-arrows ${!ifLightMode?"dark-mode":""}`}>
+                    {mobileView==="messages"?
+                    <>
+                        <button 
+                            className={`mobile-nav-arrow left ${mobileView === 'chats' ? 'active' : ''} ${!ifLightMode?"dark-mode":""}`}
+                            onClick={() => setMobileView('chats')}
+                            title="Back to Chats"
+                        >
+                            ← Chats
+                        </button>
+                        <span className="mobile-chat-title">{selectedChat.chat_name}</span>
+                        <button 
+                            className={`mobile-nav-arrow right ${mobileView === 'users' ? 'active' : ''} ${!ifLightMode?"dark-mode":""}`}
+                            onClick={() => setMobileView('users')}
+                            title="View Users"
+                        >
+                            Users →
+                        </button>
+                    </>
+                    : mobileView==='users' ? 
+                    <>
+                        <button 
+                            className={`mobile-nav-arrow left ${mobileView === 'messages' ? 'active' : ''} ${!ifLightMode?"dark-mode":""}`}
+                            onClick={() => setMobileView('messages')}
+                            title="Back to Messages"
+                        >
+                            ← Messages
+                        </button>
+                        <span className="mobile-chat-title">{selectedChat.chat_name}</span>
+                        
+                    </>
+                    
+                    : <></>}
+                </div>
+            )}
 
             {/* Left column: chat list */}
             <div id="chat-list-container" className={!ifLightMode?"dark-mode":""}>

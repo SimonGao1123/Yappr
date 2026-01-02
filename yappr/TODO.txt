@@ -1,9 +1,9 @@
 (DONE) TO FINISH DEVELOPMENT: 
 
 FUTURE ADDITIONS:
-- Rebrand + make logo
+- make logo
 
-- ensure styling on mobile is good too
+- Switch database to PostgreSQL instead of mySQL (for future additions)
 
 - gemeni chat bot (select option to talk to ai in chat and will give response through server)
 

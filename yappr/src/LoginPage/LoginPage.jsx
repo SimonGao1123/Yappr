@@ -50,7 +50,7 @@ function LoginPage ({setLoginStatus, setCurrentUser}) {
             
     return (
         <>
-            <h1 className='title-login'>ChitYapp</h1>
+            <h1 className='title-login'>YappR</h1>
             <main className='main-login'>
                 {displayLogin ? loginSection : registerSection}
                 

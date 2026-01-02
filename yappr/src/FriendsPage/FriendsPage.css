@@ -283,3 +283,202 @@
   background-color: #357abd;
 }
 
+/* ===== MEDIA QUERIES ===== */
+
+/* Tablet screens */
+@media screen and (max-width: 1024px) {
+    #friends-main {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    #add-friend-form {
+        padding-top: 5px;
+    }
+
+    #friend-search-container {
+        gap: 8px;
+    }
+
+    #user-search-bar {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+
+    #send-req-btn {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+    }
+
+    #current-friends-list {
+        max-height: 60vh;
+        padding: 10px;
+    }
+
+    #friends-right-column {
+        gap: 10px;
+    }
+
+    #friends-right-column > * {
+        padding: 10px;
+    }
+
+    .friends-li {
+        padding: 10px;
+    }
+
+    .friends-header {
+        font-size: clamp(9px, 2vw, 16px);
+    }
+}
+
+/* Mobile screens */
+@media screen and (max-width: 768px) {
+    #friends-main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        height: auto;
+        min-height: 100%;
+    }
+
+    #add-friend-form {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    #friend-search-container {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    #user-search-bar {
+        width: 100%;
+        padding: 10px;
+        font-size: 1rem;
+    }
+
+    #send-req-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    #friends-right-column {
+        grid-column: 1;
+        grid-row: 2;
+        flex-direction: row;
+        gap: 0.5rem;
+        height: auto;
+        max-height: 30vh;
+    }
+
+    #friends-right-column > * {
+        flex: 1;
+        padding: 8px;
+        max-height: 28vh;
+    }
+
+    #current-friends-list {
+        grid-column: 1;
+        grid-row: 3;
+        max-height: 40vh;
+        padding: 8px;
+    }
+
+    .friends-li {
+        padding: 8px;
+        margin-top: 6px;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .friends-li > span,
+    .friends-li > p {
+        width: 100%;
+    }
+
+    .incoming-friends-btn-container {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .friends-header {
+        font-size: clamp(11px, 3vw, 14px);
+        margin-bottom: 4px;
+    }
+
+    .unfriend-btn, .cancel-req-btn,
+    .reject-req-btn, .accept-req-btn {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+
+    #display-msg {
+        font-size: 0.85rem;
+    }
+}
+
+/* Small mobile screens */
+@media screen and (max-width: 480px) {
+    #friends-main {
+        padding: 0.25rem;
+        gap: 0.25rem;
+    }
+
+    #add-friend-form {
+        padding-top: 2px;
+    }
+
+    #friend-search-container {
+        gap: 6px;
+    }
+
+    #user-search-bar {
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+
+    #send-req-btn {
+        padding: 8px;
+        font-size: 0.85rem;
+    }
+
+    #friends-right-column {
+        flex-direction: column;
+        max-height: 35vh;
+    }
+
+    #friends-right-column > * {
+        max-height: 16vh;
+        padding: 6px;
+    }
+
+    #current-friends-list {
+        max-height: 35vh;
+        padding: 6px;
+    }
+
+    .friends-li {
+        padding: 6px;
+        margin-top: 4px;
+    }
+
+    .friends-header {
+        font-size: 12px;
+    }
+
+    .unfriend-btn, .cancel-req-btn,
+    .reject-req-btn, .accept-req-btn {
+        padding: 5px 8px;
+        font-size: 0.7rem;
+    }
+
+    #display-msg {
+        font-size: 0.8rem;
+    }
+}
+

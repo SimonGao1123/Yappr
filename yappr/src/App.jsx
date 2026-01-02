@@ -8,6 +8,9 @@ import Settings from './SettingsPage/Settings.jsx';
 
 import settingsIcon from './images/Gear-icon.png';
 import settingsIconDark from './images/Gear-icon-Dark.png';
+import menuIcon from './images/menu-icon.svg';
+import menuIconDark from './images/menu-icon-dark.svg';
+
 function App() {
     // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
@@ -181,14 +184,71 @@ function App() {
   );
 }
 function NavBar ({ifLightMode, setDisplayIndex, displayIndex}) {
+  const [menuOpen, setMenuOpen] = useState(false); // for mobile hamburger menu display
+  
+  const handleNavClick = (index) => {
+    setDisplayIndex(index);
+    setMenuOpen(false);
+  };
+
+  const getTabName = () => {
+    switch(displayIndex) {
+      case 0: return 'Chats';
+      case 1: return 'Friends';
+      case 2: return 'Settings';
+      default: return 'Menu';
+    }
+  };
+
   return (
   <>
-    <div id="top-bar">
-      <nav>
+    <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
+      {/* Desktop Navigation */}
+      <nav className="desktop-nav">
         <button className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(0)} id="nav-chats-btn">Chats</button>
         <button className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(1)} id="nav-friends-btn">Friends</button>
       </nav>
-      <button className={`nav-btn ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
+      
+      {/* Mobile Navigation */}
+      <div className="mobile-nav">
+        <button 
+          className={`hamburger-btn ${!ifLightMode?"dark-mode":""}`} 
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
+        >
+          <img 
+            src={ifLightMode ? menuIcon : menuIconDark} 
+            alt="Menu" 
+            className="menu-icon"
+          />
+          <span className="current-tab-name">{getTabName()}</span>
+        </button>
+        
+        {menuOpen && (
+          <div className={`dropdown-menu ${!ifLightMode?"dark-mode":""}`}>
+            <button 
+              className={`dropdown-item ${displayIndex===0?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              onClick={() => handleNavClick(0)}
+            >
+              Chats
+            </button>
+            <button 
+              className={`dropdown-item ${displayIndex===1?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              onClick={() => handleNavClick(1)}
+            >
+              Friends
+            </button>
+            <button 
+              className={`dropdown-item ${displayIndex===2?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              onClick={() => handleNavClick(2)}
+            >
+              Settings
+            </button>
+          </div>
+        )}
+      </div>
+      
+      <button className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
         <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></button>
     </div>
   </>  
