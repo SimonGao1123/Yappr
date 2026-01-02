@@ -1,0 +1,187 @@
+import { useState } from 'react'
+import './LoginPage.css';
+
+function LoginPage ({setLoginStatus, setCurrentUser}) {
+    const [loginUserEmail, setLoginUserEmail] = useState("");
+    const [loginPassword, setLoginPassword] = useState("");
+
+    const [registerUsername, setRegisterUsername] = useState("");
+    const [registerPassword, setRegisterPassword] = useState("");
+    const [registerEmail, setRegisterEmail] = useState("");
+
+    const [displayLogin, switchLoginDisplay] = useState(true); // true means login is displayed, false means registration 
+
+    const [displayMessage, setDisplayMessage] = useState(""); // displays if login/registration failed
+
+    
+    function resetAllFields () {
+        setLoginUserEmail("");
+        setLoginPassword("");
+        setRegisterUsername("");
+        setRegisterPassword("");
+        setRegisterEmail("");
+        setDisplayMessage("");
+    }
+    const loginSection = <div id="login-section">
+                <UserLogin
+                loginUserEmail={loginUserEmail}
+                setLoginUserEmail={setLoginUserEmail}
+                loginPassword={loginPassword}
+                setLoginPassword={setLoginPassword}
+                setDisplayMessage={setDisplayMessage}
+                setLoginStatus={setLoginStatus}
+                setCurrentUser={setCurrentUser}
+                />
+            </div>;
+
+    const registerSection = <div id="register-section">
+                <UserRegister
+                registerUsername={registerUsername}
+                setRegisterUsername={setRegisterUsername}
+                registerPassword={registerPassword}
+                setRegisterPassword={setRegisterPassword}
+                registerEmail={registerEmail}
+                setRegisterEmail={setRegisterEmail}
+                setDisplayMessage={setDisplayMessage}
+                switchLoginDisplay={switchLoginDisplay}
+                />
+    </div>
+            
+            
+    return (
+        <>
+            <h1 className='title-login'>YappR</h1>
+            <main className='main-login'>
+                {displayLogin ? loginSection : registerSection}
+                
+                <p id="display-msg">{displayMessage}</p>
+                
+                {displayLogin ? 
+                <p>Register <button className='inline-btn-login' onClick={() => 
+                    {switchLoginDisplay(false) 
+                    resetAllFields()}}>here</button></p> :
+                <p>Login <button className='inline-btn-login' onClick={() => 
+                {switchLoginDisplay(true)
+                resetAllFields()
+                }}>here</button></p>}
+            </main>
+        </>
+    );
+}
+
+
+function UserLogin ({loginUserEmail, setLoginUserEmail, loginPassword, setLoginPassword, setDisplayMessage, setLoginStatus, setCurrentUser}) {
+    function handleUserLogin (e) {
+        e.preventDefault();
+
+        fetch("/userLogins/login", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            credentials: "include",
+            body: JSON.stringify({userOrEmail: loginUserEmail, password: loginPassword})
+        }).then(async (response) => {
+            const parsed = await response.json();
+
+            if (parsed.success) {
+                const {username, id} = parsed.user;
+                setLoginStatus(false);
+                setCurrentUser({username, id}); 
+            }
+            setDisplayMessage(parsed.message);
+        }).catch((error) => {
+            console.log("Error while logging in: ", error);
+        })
+        setLoginUserEmail("");
+        setLoginPassword("");
+    }   
+    return (
+        <>
+            <h2 className='login-header'>Login</h2>
+            <form className='form-login' onSubmit={handleUserLogin}>
+                <div className='login-input-container'>
+                    <input className="input-login" placeholder="Username/Email" id="login-username" type="text" maxLength={30} value={loginUserEmail} onChange={(e) => setLoginUserEmail(e.target.value)}/>
+                </div>
+
+                <div className='login-input-container'>
+                    <input className="input-login" placeholder='Password' id="login-password" type="text" maxLength={30} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
+                </div>
+
+                <button className="login-btn" id="login-btn" type="submit">Login</button>
+            </form>
+
+        </>
+    );
+}
+function UserRegister ({registerUsername, setRegisterUsername, registerPassword, setRegisterPassword, registerEmail, setRegisterEmail, setDisplayMessage, switchLoginDisplay}) {
+    const [confirmRegisterPassword, setConfirmPassword] = useState("");
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // checks if email is valid
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).+$/;
+    
+    function handleUserRegister (e) {
+        e.preventDefault();
+        if (confirmRegisterPassword !== registerPassword) {
+            setDisplayMessage("Password's don't match");
+            return;    
+        } // if password and confirm passwords don't match
+
+        if (!emailRegex.test(registerEmail)) {
+            setDisplayMessage("Invalid Email");
+            return;
+        }
+        if (!passwordRegex.test(registerPassword) || registerPassword.length < 8) {
+            setDisplayMessage("Password needs to be at least 8 characters and contain at least one number and special character");
+            setConfirmPassword("");
+            setRegisterPassword("");
+            return; 
+        }
+
+        fetch("/userLogins/register", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({username: registerUsername, password: registerPassword, email: registerEmail})
+        }).then(async (response) => {
+            const parsed = await response.json();
+            console.log(parsed);
+            if (parsed.success) {
+                switchLoginDisplay(true);
+            } 
+            setDisplayMessage(parsed.message);
+        }).catch((error) => {
+            console.log("Error occurred while registration: ", error);
+        });
+
+        setDisplayMessage("");
+        setRegisterUsername("");
+        setRegisterPassword("");
+        setRegisterEmail("");
+    }   
+    return (
+        <>
+            <h2 className='login-header'>Register</h2>
+            <form className='form-login' onSubmit={handleUserRegister}>
+
+                <div className='register-input-container'>
+                    <input className="input-login" placeholder="Username" id="register-username" type="text" maxLength={30} value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)}/>
+                </div>
+
+                <div className='register-input-container'>
+                    <input className="input-login" placeholder="Email" id="register-email" type="text" maxLength={225} value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)}/>
+                </div>
+
+                <div className='register-input-container'>
+                    <input className="input-login" placeholder="Password" id="register-password" type="text" maxLength={30} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)}/>
+                </div>
+
+                <div className='register-input-container'>
+                    <input className="input-login" placeholder="Confirm Password" id="register-password-confirm" type="text" maxLength={30} value={confirmRegisterPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
+                </div>
+
+                
+
+                <button className="login-btn" id="register-btn" type="submit">Register</button>
+            </form>
+
+        </>
+    );
+}
+export default LoginPage;

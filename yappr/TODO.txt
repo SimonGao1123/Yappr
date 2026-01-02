@@ -1,0 +1,20 @@
+(DONE) TO FINISH DEVELOPMENT: 
+
+FUTURE ADDITIONS:
+- make logo
+
+- gemeni chat bot (select option to talk to ai in chat and will give response through server)
+
+- add matchmaking (new table to hold users in matchmaking and to assign them into chats)
+
+- add image attachment
+
+- allow image profile pictures (need to be added in database)
+
+- make email used for forgot password or 2 step verification
+
+- Mutual friends 
+
+- Remeber me button
+
+V1 LAUNCH = (DONE) FINAL: PRODUCTION
