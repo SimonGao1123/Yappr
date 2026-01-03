@@ -26,7 +26,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Public directory is inside the backend folder (where vite builds to)
-const publicDir = path.join(__dirname, '..', 'public');
+const publicDir = path.join(__dirname, 'public');
 const indexPath = path.join(publicDir, 'index.html');
 
 const app = express();
