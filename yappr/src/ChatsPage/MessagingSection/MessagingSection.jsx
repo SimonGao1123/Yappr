@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useEffect } from 'react';
 
+import geminiLogo from '../../images/gemini-logo.png';
+import './MessagingSection.css';
+
 function MessagingSection ({currentUser, chat_id, ifLightMode}) {
     const [pastMessageData, setMessageData] = useState([]); // only specific to certain messages
     useEffect(() => {
@@ -34,9 +37,31 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode})
     const messageDisplay = [];
     for (const messageData of pastMessageData) {
         // each message is {message_id, sender_id, message, username, sent_at}
-        const {message_id, sender_id, message, username, sent_at} = messageData;
+        const {message_id, sender_id, message, username, sent_at, askGemini} = messageData;
 
-        if (sender_id === -1) {
+        if (sender_id !== -1 && askGemini === 1) {
+            // prompt
+            messageDisplay.push(
+                <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
+                    <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
+                    <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
+                    <div className={`gemini-text ${!ifLightMode?"dark-mode":""}`}>
+                        <span>Ask Gemini</span>
+                        <img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/>
+                    </div>
+                    {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
+                </li>
+            );
+        } else if (sender_id === -1 && askGemini === 1) {
+            // gemini response
+            messageDisplay.push(
+                <li className={`ai-response-container ${!ifLightMode?"dark-mode":""}`} key={message_id}>
+                    <img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/>
+                    <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
+                    <p className={`msg-time ${!ifLightMode?"dark-mode":""}`}>{formatDateTimeSmart(sent_at)}</p>
+                </li>
+            );
+        } else if (sender_id === -1) {
             // server message different format
             messageDisplay.push(
             <li className='server-msg-container'>
@@ -67,13 +92,39 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode})
 
 function SendMessageInput ({currentUser, chat_id, ifLightMode}) {
     const [message, setMessage] = useState("");
+    const [ifAskAI, setIfAskAI] = useState(false);
 
     return (
         <div id="send-msg-input" className={!ifLightMode?"dark-mode":""}>
             <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)}/>
-            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={() => sendMessage(chat_id, message, currentUser.id, setMessage)}>Send</button>
+            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
+                !ifAskAI?
+                sendMessage(chat_id, message, currentUser.id, setMessage)
+                :
+                promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username);
+                }}>Send</button>
+            <div className="gemini-checkbox-wrapper">
+                <label htmlFor='if-ask-gemini'><img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/> Ask Gemini</label>
+                <input id="if-ask-gemini" className={!ifLightMode?"dark-mode":""} checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
+            </div>
         </div>
     );
+}
+function promptAI (setMessage, setIfAskAI, prompt, chat_id, user_id, username) {
+    fetch("/gemini/prompt", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({prompt, chat_id, user_id, username})
+    }).then(async response => {
+        const parsed = await response.json();
+        console.log(parsed.message);
+    }).catch(err => {
+        console.log(err);
+    });
+    setMessage("");
+    setIfAskAI(false);
+
+    readMessages(chat_id, user_id)
 }
 function formatDateTimeSmart(isoString) {
   const date = new Date(isoString);

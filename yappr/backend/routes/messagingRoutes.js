@@ -84,7 +84,7 @@ router.get("/getMessages/:user_id", async (req, res) => {
 
             // only saves past 100 messages
             const [rows] = await db.promise().query(
-                "SELECT m.message_id, m.sender_id, m.message, u.username, m.sent_at FROM Messages m JOIN Users u ON u.user_id=m.sender_id WHERE m.chat_id=? AND m.deleted=0 ORDER BY m.message_id ASC LIMIT 100",
+                "SELECT m.askGemini, m.message_id, m.sender_id, m.message, u.username, m.sent_at FROM Messages m JOIN Users u ON u.user_id=m.sender_id WHERE m.chat_id=? AND m.deleted=0 ORDER BY m.message_id ASC LIMIT 100",
                 [chat.chat_id]
             ); // good practice, select username and id at same time
             

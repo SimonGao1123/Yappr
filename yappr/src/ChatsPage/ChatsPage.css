@@ -279,6 +279,7 @@
     border-radius: 8px;
     border-left: 3px solid #4a90e2;
     word-wrap: break-word;
+    margin-left: 3px;
 }
 
 .msg-container.your-msg {
@@ -286,6 +287,7 @@
     border-left-color: #66bb6a;
     margin-left: auto;
     max-width: 85%;
+    margin-right: 3px;
 }
 
 .msg-username-date {

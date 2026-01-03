@@ -20,12 +20,13 @@ import friendsRouter from './routes/friendsRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import messagingRoutes from './routes/messagingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import geminiRoutes from './routes/geminiRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Public directory is inside the backend folder (where vite builds to)
-const publicDir = path.join(__dirname, 'public');
+const publicDir = path.join(__dirname, '..', 'public');
 const indexPath = path.join(publicDir, 'index.html');
 
 const app = express();
@@ -86,6 +87,7 @@ app.use('/friends', friendsRouter);
 app.use('/chats', chatRoutes);
 app.use('/message', messagingRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/gemini', geminiRoutes);
 
 // ---------- Static assets ----------
 app.use(express.static(publicDir, { maxAge: '1y', etag: false }));

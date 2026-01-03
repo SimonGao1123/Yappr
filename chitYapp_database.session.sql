@@ -76,6 +76,8 @@ CREATE TABLE Messages (
     message TEXT NOT NULL,
     sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted BOOL DEFAULT FALSE,
+    askGemini BOOL DEFAULT FALSE,
+    
 
     PRIMARY KEY (message_id),
 

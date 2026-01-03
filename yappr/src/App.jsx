@@ -133,6 +133,7 @@ function App() {
 
     const MAIN_PAGE = (
       <>
+        <h1 id="title">YappR</h1>
         <NavBar  
         setDisplayIndex={setDisplayIndex}
         displayIndex={displayIndex}
