@@ -58,7 +58,7 @@ function App() {
         }).then(async res => {
             const data = await res.json();
             if (data.success) {
-                setIfLightMode(data.light_mode);
+                setIfLightMode(data.light_mode===1);
             }
         });
     }, [currentUser?.id]);

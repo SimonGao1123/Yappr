@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm install && vite build",
-    "start": "node backend/server.js",
+    "start": "tsx backend/server.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -29,12 +29,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/compression": "^1.8.1",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.18.2",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0"
+    "globals": "^16.5.0",
+    "tsx": "^4.21.0"
   },
   "engines": {
     "node": "20.x"
