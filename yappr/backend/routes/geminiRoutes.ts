@@ -7,7 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv"; // to get api key
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { SelectChatUsers, PromptGeminiInput } from '../../definitions/messagingType.js';
+import type { SelectChatUsers, PromptGeminiInput } from '../../definitions/messagingTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

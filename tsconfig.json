@@ -33,9 +33,8 @@
     // "noPropertyAccessFromIndexSignature": true,
 
     // Recommended Options
-    "strict": false,
-    "allowJs": true,
-    "checkJs": false,
+    "strict": true,
+    
     // when fully ts then just change to "strict": true
     "jsx": "react-jsx",
     "verbatimModuleSyntax": true,

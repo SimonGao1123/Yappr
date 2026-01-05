@@ -33,7 +33,7 @@ router.get("/getDescription/:user_id", async (req: Request<{user_id: number}>, r
         'SELECT description FROM Users WHERE user_id=?',
         [user_id]
        );
-       if (!rows[0].description) {
+       if (!rows[0] || !rows[0].description) {
         return res.status(200).json({success: true, message: "obtained description", desc: ""});
        } 
        return res.status(200).json({success: true, message: "obtained description", desc: rows[0].description});
@@ -63,12 +63,13 @@ router.post("/switchLightDarkMode", async (req: Request<{},{},SwitchLightDarkMod
 
 router.get("/ifLightMode/:user_id", async (req: Request<{user_id: number}>, res: Response<standardResponse>) => {
     const user_id = req.params.user_id;
+
     try {
         const [rows] = await db.execute<SelectLightMode[]>(
             'SELECT light_mode FROM Settings WHERE user_id=?',
             [user_id]
         );
-        return res.status(200).json({success: true, message: "obtained mode", light_mode: rows[0].light_mode});
+        return res.status(200).json({success: true, message: "obtained mode", light_mode: rows[0]!.light_mode});
     } catch (err) {
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});

@@ -17,19 +17,19 @@ export type SwitchLightDarkModeInput = {
 export type UpdateUsernameProp = {
     currentUser: {username: string, id: number}, 
     ifLightMode: boolean,
-    setCurrentUser: (value: {username: string, id: number})=> void
+    setCurrentUser: (value: {username: string, id: number} | null)=> void
 }
 export type ThemeToggleProp = {
     ifLightMode: boolean,
     setIfLightMode: (value: boolean) => void,
-    currentUser: {username: string, id: number}
+    currentUser: {username: string, id: number} | null
 }
 export type AlterDescriptionProps = {
-    currentUser: {username: string, id: number},
+    currentUser: {username: string, id: number} | null,
     ifLightMode: boolean
 }
 export type SettingsProps = {
-    setCurrentUser: (value: {username:string, id:number})=>void, 
+    setCurrentUser: (value: {username:string, id:number} | null)=>void, 
     setLoginStatus: (value: boolean)=>void, 
     setDisplayIndex: (value: number)=>void, 
     currentUser: {username: string, id: number}, 

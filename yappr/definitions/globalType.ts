@@ -9,3 +9,8 @@ export type standardResponse =
     message: string,
     success: false
 }
+export type NavBarProps = {
+    ifLightMode: boolean,
+    setDisplayIndex: (value: number)=> void,
+    displayIndex: number
+}

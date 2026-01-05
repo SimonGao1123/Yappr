@@ -16,7 +16,7 @@ router.get("/me", (req: Request, res: Response<MeResponse>) => {
 
     return res.json({loggedIn: true, 
         user: {
-            username: req.session.username,
+            username: req.session.username ?? "",
             id: req.session.userId
         }
     });
@@ -58,18 +58,19 @@ router.post("/login", async (req: Request<{},{},LoginInput>, res: Response<stand
             return res.status(401).json({message: "Username or Email doesn't exist", success: false});
         }
 
-        if (rows[0].user_id === -1) {
+        const user = rows[0]!;
+        if (user.user_id === -1) {
             return res.status(401).json({message: `Invalid Username/Password`, success: false});
             // accidentally logged into server account (NOT)
         }
 
-        const stored = rows[0].password;
+        const stored = user.password;
         if (comparePassword(password, stored)) {
-            req.session.userId = rows[0].user_id;
-            req.session.username = rows[0].username; // stores userId and username for session
+            req.session.userId = user.user_id;
+            req.session.username = user.username; // stores userId and username for session
 
             // password matches the password associated with the user
-            return res.status(201).json({message: `Successfully logged in as ${rows[0].username}`, success: true, user: {username: rows[0].username, id: rows[0].user_id}});
+            return res.status(201).json({message: `Successfully logged in as ${user.username}`, success: true, user: {username: user.username, id: user.user_id}});
         } else {
             return res.status(401).json({message: `Invalid Username/Password`, success: false});
         }
@@ -96,7 +97,7 @@ router.post("/register", async (req: Request<{},{},RegisterInput>, res: Response
         );
         return res.status(201).json({message: `Successfully registered ${username}`, success: true});
         
-    } catch(error) {
+    } catch(error: any) {
         if (error.code === "ER_DUP_ENTRY") {
             if (error.sqlMessage.includes("users.username")) {
                 return res.status(409).json({message: "Username already exists", success: false}); 
@@ -135,8 +136,9 @@ router.post("/updateUsername", async (req: Request<{},{},UpdateUsernameInput>, r
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Invalid user"});
         }
-        if (!isTwoWeeksOrOlder(rows[0].last_updated_username)) {
-            return res.status(401).json({success: false, message: `Can only change username every 2 weeks, last updated: ${formatDateTimeSmart(rows[0].last_updated_username)}`});
+        const userRow = rows[0]!;
+        if (!isTwoWeeksOrOlder(userRow.last_updated_username)) {
+            return res.status(401).json({success: false, message: `Can only change username every 2 weeks, last updated: ${formatDateTimeSmart(userRow.last_updated_username)}`});
         }
         
         await db.query(
@@ -158,7 +160,7 @@ router.post("/updateUsername", async (req: Request<{},{},UpdateUsernameInput>, r
         });
     });
         
-    } catch (error) {
+    } catch (error: any) {
         if (error.code === "ER_DUP_ENTRY") {
             return res.status(401).json({success: false, message: "Username already exists"});
         }
@@ -218,6 +220,7 @@ function encryptPassword (password: string): string {
 // true if same password
 function comparePassword (password: string, stored: string): boolean {
     const [salt, hash] = stored.split(":"); // extract salt and hash
+    if (!salt) return false;
     const hashedPassword = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
     return hashedPassword === hash;
 }

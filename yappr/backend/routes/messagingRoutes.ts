@@ -3,7 +3,7 @@ import type {Request, Response} from 'express';
 import db from '../database.js';
 import mysql from 'mysql2/promise';
 
-import type { SendMessageInput, SelectChatUsers, DeleteMessageInput, SelectIfMessageExists, ReadMessagesInput, SelectMessagesFromChat, GetAllChatsMessages, GetMessagesResponse, GetAllMessageId } from '../../definitions/messagingType.js';
+import type { SendMessageInput, SelectChatUsers, DeleteMessageInput, SelectIfMessageExists, ReadMessagesInput, SelectMessagesFromChat, GetAllChatsMessages, GetMessagesResponse, GetAllMessageId } from '../../definitions/messagingTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 
 const router = express.Router();

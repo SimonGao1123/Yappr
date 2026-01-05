@@ -40,7 +40,7 @@ function updateUsernameFunction(currentUser: {username: string, id: number}, use
     }).then(async res => {
         const parsed: standardResponse = await res.json();
         setDisplayMsg(parsed.message);
-        if (parsed.success) {
+        if (parsed.success && parsed.user) {
             setCurrentUser(parsed.user);
         }
         console.log(parsed);
@@ -49,6 +49,8 @@ function updateUsernameFunction(currentUser: {username: string, id: number}, use
     });
 }
 function ThemeToggle ({ifLightMode, setIfLightMode, currentUser}: ThemeToggleProp) {
+    if (!currentUser) return null;
+    
     return (
         <div id="light-mode-toggle" className={!ifLightMode?"dark-mode":""}>
             <h2 className={!ifLightMode?"dark-mode":""}>Theme</h2>
@@ -92,7 +94,7 @@ function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode
     setIfLightMode(ifLightMode);
 }
 
-function logOutFunction (setCurrentUser: (value: {username: string, id: number})=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void) {
+function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void) {
     fetch("/userLogins/logout", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -115,6 +117,7 @@ function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {
     const [displayMsg, setDisplayMsg] = useState("");
 
     function updateDescription () {
+        if (!currentUser) return;
         fetch("/settings/setDescription", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
@@ -129,6 +132,7 @@ function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {
     }
 
     function getDescription () {
+        if (!currentUser) return;
         fetch(`/settings/getDescription/${currentUser.id}`, {
             method: "GET"
         }
@@ -138,7 +142,9 @@ function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {
                 console.log(parsed.message);
                 return;
             }
-            setDescription(parsed.desc);
+            if (parsed.desc) {
+                setDescription(parsed.desc);
+            }
         }).catch(err => {
             console.log(err);
         })

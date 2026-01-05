@@ -3,11 +3,11 @@ import { useEffect } from 'react';
 
 import geminiLogo from '../../images/gemini-logo.png';
 import './MessagingSection.css';
-import type { MessagingSectionProp, PastMessagesDataProp, SendMessageInput, SendMessageInputProp, SelectMessagesFromChat, GetMessagesResponse } from '../../../definitions/messagingType.js';
+import type { MessagingSectionProp, PastMessagesDataProp, SendMessageInput, SendMessageInputProp, SelectMessagesFromChat, GetMessagesResponse } from '../../../definitions/messagingTypes.js';
 import type { standardResponse } from '../../../definitions/globalType.js';
 
 function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSectionProp) {
-    const [pastMessageData, setMessageData] = useState([]); // only specific to certain messages
+    const [pastMessageData, setMessageData] = useState<SelectMessagesFromChat[]>([]); // only specific to certain messages
     useEffect(() => {
             if (!currentUser?.id) return;
     
@@ -158,10 +158,11 @@ function getPastMessages (user_id: number, setMessageData: (value: SelectMessage
         method: "GET"
     }).then(async response => {
         const parsed: GetMessagesResponse = await response.json();
-        if (!parsed.success) {
+        if (!parsed.success || !parsed.msgData) {
             setMessageData([]);
             return;
         }
+        
         const chat = parsed.msgData.find(
             c => c.chat_id === chat_id
         ) // each element in msgData is {chat_id, messageData}, so need to find object where chat_id is the one focused on to portray correct msgs

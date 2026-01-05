@@ -1,25 +1,28 @@
 import { useEffect, useState } from 'react'
 
 import './App.css'
-import LoginPage from './LoginPage/LoginPage.jsx';
-import FriendsPage from './FriendsPage/FriendsPage.jsx';
-import ChatsPage from './ChatsPage/ChatsPage.jsx';
-import Settings from './SettingsPage/Settings.jsx';
+import LoginPage from './LoginPage/LoginPage.js';
+import FriendsPage from './FriendsPage/FriendsPage.js';
+import ChatsPage from './ChatsPage/ChatsPage.js';
+import Settings from './SettingsPage/Settings.js';
 
 import settingsIcon from './images/Gear-icon.png';
 import settingsIconDark from './images/Gear-icon-Dark.png';
 import menuIcon from './images/menu-icon.svg';
 import menuIconDark from './images/menu-icon-dark.svg';
+import type { CurrUser, MeResponse } from '../definitions/loginTypes.js';
+import type { NavBarProps, standardResponse } from '../definitions/globalType.js';
+import type { CurrOutIncFriendsQuery, GetCurrFriendsResponse, GetIncFriendsResponse, GetOutFriendsResponse } from '../definitions/friendsTypes.js';
 
 function App() {
     // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
-    const [currentUser, setCurrentUser] = useState(null); // holds username/id of current user
+    const [currentUser, setCurrentUser] = useState<CurrUser | null>(null); // holds username/id of current user
 
     // FRIENDS PAGE:
-    const [currentFriends, setCurrentFriends] = useState([]); // holds {username, user_id, friend_id}
-    const [outgoingFriendReq, setOutFriendReq] = useState([]);
-    const [incomingFriendReq, setInFriendReq] = useState([]); 
+    const [currentFriends, setCurrentFriends] = useState<CurrOutIncFriendsQuery[]>([]); // holds {username, user_id, friend_id}
+    const [outgoingFriendReq, setOutFriendReq] = useState<CurrOutIncFriendsQuery[]>([]);
+    const [incomingFriendReq, setInFriendReq] = useState<CurrOutIncFriendsQuery[]>([]); 
 
     // CHATS PAGE:
     const [displayIndex, setDisplayIndex] = useState(0); 
@@ -38,8 +41,8 @@ function App() {
         method: "GET",
         credentials: "include"
       }).then(async response => {
-        const parsed = await response.json();
-        if (parsed.loggedIn) {
+        const parsed: MeResponse = await response.json();
+        if (parsed.loggedIn && parsed.user) {
           const {username, id} = parsed.user;
           setLoginStatus(false);
           setCurrentUser({username, id});
@@ -56,7 +59,7 @@ function App() {
         fetch(`/settings/ifLightMode/${currentUser.id}`, {
             method: "GET"
         }).then(async res => {
-            const data = await res.json();
+            const data: standardResponse = await res.json();
             if (data.success) {
                 setIfLightMode(data.light_mode===1);
             }
@@ -65,11 +68,12 @@ function App() {
 
     // auto update of friends
     function getCurrentFriends () {
+        if (!currentUser) return;
         fetch(`/friends/currFriends/${currentUser.id}`)
                 .then(res => res.json())
-                .then(data => {
+                .then((data: GetCurrFriendsResponse) => {
                     if (data.success) {
-                        setCurrentFriends(data.currFriends);
+                        setCurrentFriends(data.currFriends ?? []);
                     }
                 })
                 .catch(err => console.log(err));
@@ -85,12 +89,13 @@ function App() {
     }, [currentUser?.id, currentFriends, displayIndex]);
 
     function getOutgoingRequests () {
+        if (!currentUser) return;
         fetch(`/friends/outgoingRequests/${currentUser.id}`, {
             method: "GET"
         }).then(async response => {
-            const data = await response.json();
+            const data: GetOutFriendsResponse = await response.json();
             if (data.success) {
-                setOutFriendReq(data.outgoingRequests);
+                setOutFriendReq(data.outgoingRequests ?? []);
             }
             
         }).catch(err => {
@@ -108,12 +113,13 @@ function App() {
     }, [currentUser?.id, outgoingFriendReq, displayIndex]);
 
     function getIncomingReq () {
+        if (!currentUser) return;
         fetch(`/friends/incomingRequests/${currentUser.id}`, {
             method: "GET"
         }).then(async response => {
-            const parsed = await response.json();
+            const parsed: GetIncFriendsResponse = await response.json();
             if (parsed.success) {
-                setInFriendReq(parsed.incomingRequests);
+                setInFriendReq(parsed.incomingRequests ?? []);
             }
         }).catch(err => {
             console.log(err);
@@ -142,6 +148,8 @@ function App() {
 
         <main style={!ifLightMode?{backgroundColor: "#1e1e1e"}:{}} id="app-main-section">
           
+          {currentUser && (
+          <>
           {displayIndex===0?
           <ChatsPage
           currentUser={currentUser}
@@ -151,11 +159,8 @@ function App() {
           : displayIndex===1?
           <FriendsPage
             currentFriends={currentFriends}
-            setCurrentFriends={setCurrentFriends}
             outgoingFriendReq={outgoingFriendReq}
-            setOutFriendReq={setOutFriendReq}
             incomingFriendReq={incomingFriendReq}
-            setInFriendReq={setInFriendReq}
             currentUser={currentUser}
             ifLightMode={ifLightMode}
           />
@@ -170,8 +175,9 @@ function App() {
           />
           :
           <></>}
-          {currentUser ? 
-          <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div> : <></>}
+          <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div>
+          </>
+          )}
         </main>
         
       </>
@@ -184,10 +190,10 @@ function App() {
     </>
   );
 }
-function NavBar ({ifLightMode, setDisplayIndex, displayIndex}) {
+function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
   const [menuOpen, setMenuOpen] = useState(false); // for mobile hamburger menu display
   
-  const handleNavClick = (index) => {
+  const handleNavClick = (index: number) => {
     setDisplayIndex(index);
     setMenuOpen(false);
   };

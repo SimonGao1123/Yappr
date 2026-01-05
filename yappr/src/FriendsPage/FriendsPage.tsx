@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { useEffect } from 'react';
 import './FriendsPage.css';
+import type { DisplayCurrentFriendsProps, DisplayIncomingRequestsProps, DisplayOutgoingRequestsProps, FriendsPageProps, SearchUsersProps } from '../../definitions/friendsTypes.js';
+import type { standardResponse } from '../../definitions/globalType.js';
 
 function FriendsPage (
-    {currentFriends, setCurrentFriends, 
-    outgoingFriendReq, setOutFriendReq, 
-    incomingFriendReq, setInFriendReq, currentUser, ifLightMode}) {
+    {currentFriends, 
+    outgoingFriendReq, 
+    incomingFriendReq, 
+    currentUser, 
+    ifLightMode}: FriendsPageProps) {
 
     const [searchBarInput, setSearchBarInput] = useState("");
     
@@ -25,17 +29,17 @@ function FriendsPage (
     );
 }
 
-function SearchUsers ({searchBarInput, setSearchBarInput, currentUser, ifLightMode}) {
+function SearchUsers ({searchBarInput, setSearchBarInput, currentUser, ifLightMode}: SearchUsersProps) {
     const [displayMsg, setDisplayMsg] = useState("");
 
-    function addFriendFunction (e) {
+    function addFriendFunction (e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         fetch("/friends/sendFriendRequest", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({sender_id: currentUser.id, receiver_id: searchBarInput})
         }).then(async response => {
-            const parsed = await response.json();
+            const parsed: standardResponse = await response.json();
             setDisplayMsg(parsed.message);
         }).catch(err => {
             console.log(err);
@@ -57,16 +61,16 @@ function SearchUsers ({searchBarInput, setSearchBarInput, currentUser, ifLightMo
     );
 }
 
-function DisplayCurrentFriends ({currentFriends, ifLightMode}) {
+function DisplayCurrentFriends ({currentFriends, ifLightMode}: DisplayCurrentFriendsProps) {
     const friendsList = [];
 
-    function unfriendFunction (friend_id, other_user_username, other_user_id) {
+    function unfriendFunction (friend_id: number, other_user_username: string) {
         fetch("/friends/unfriend", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, other_user_username, other_user_id})
+            body: JSON.stringify({friend_id, other_user_username})
         }).then(async response => {
-            const parsed = await response.json();
+            const parsed: standardResponse = await response.json();
             console.log(parsed.message);
         }).catch(err => {
             console.log(err);
@@ -74,11 +78,12 @@ function DisplayCurrentFriends ({currentFriends, ifLightMode}) {
     }
     for (let i = 0; i < currentFriends.length; i++) {
         const friend = currentFriends[i];
+        if (!friend) continue;
         // each friend is an object {username, user_id, friend_id}
         friendsList.push(
             <li className={`friends-li ${!ifLightMode?"dark-mode":""}`} key={friend.friend_id}>{friend.username} ID: {friend.user_id}
                 <button className={`unfriend-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
-                    unfriendFunction(friend.friend_id, friend.username, friend.user_id)
+                    unfriendFunction(friend.friend_id, friend.username)
                 }> Unfriend </button>
             </li>
         );
@@ -92,15 +97,15 @@ function DisplayCurrentFriends ({currentFriends, ifLightMode}) {
         </div>);
 }
 
-function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}) {
+function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}: DisplayOutgoingRequestsProps) {
     
-    function cancelRequest (friend_id, receiver_id, receiver_username) {
+    function cancelRequest (friend_id: number, receiver_id: number, receiver_username: string) {
         fetch("/friends/cancel", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, receiver_id, receiver_username})
         }).then(async response => {
-            const parsed = await response.json();
+            const parsed: standardResponse = await response.json();
             console.log(parsed.message);
         }).catch(err => {
             console.log(err);
@@ -110,6 +115,8 @@ function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}) {
     const outgoingReq = [];
     for (let i = 0; i < outgoingFriendReq.length; i++) {
         const request = outgoingFriendReq[i];
+        if (!request) continue;
+        // each request is an object {username, user_id, friend_id}
         outgoingReq.push(
             <li className={`friends-li ${!ifLightMode?"dark-mode":""}`} key={request.friend_id}>{request.username} ID: {request.user_id}
                 <button className={`cancel-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
@@ -128,27 +135,27 @@ function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}) {
         </div>);
 }
 
-function DisplayIncomingRequests ({incomingFriendReq, ifLightMode}) {
+function DisplayIncomingRequests ({incomingFriendReq, ifLightMode}: DisplayIncomingRequestsProps) {
     
-    function rejectRequest (friend_id, sender_username, sender_id) {
+    function rejectRequest (friend_id: number, sender_username: string, sender_id: number) {
         fetch("/friends/reject", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
         }).then(async response => {
-            const parsed = await response.json();
+            const parsed: standardResponse = await response.json();
             console.log(parsed.message);
         }).catch(err => {
             console.log(err);
         });
     }
-    function acceptRequest (friend_id, sender_username, sender_id) {
+    function acceptRequest (friend_id: number, sender_username: string, sender_id: number) {
         fetch("/friends/accept", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
         }).then(async response => {
-            const parsed = await response.json();
+            const parsed: standardResponse = await response.json();
             console.log(parsed.message);
         }).catch(err => {
             console.log(err);
@@ -158,7 +165,7 @@ function DisplayIncomingRequests ({incomingFriendReq, ifLightMode}) {
     const incomingReq = [];
     for (let i = 0; i < incomingFriendReq.length; i++) {
         const request = incomingFriendReq[i];
-
+        if (!request) continue;
         incomingReq.push(
             <li className={`friends-li ${!ifLightMode?"dark-mode":""}`}  key={request.friend_id}>{request.username} ID: {request.user_id}
                 <div className='incoming-friends-btn-container'>

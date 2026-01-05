@@ -85,7 +85,7 @@ function UserLogin ({loginUserEmail, setLoginUserEmail, loginPassword, setLoginP
         }).then(async (response) => {
             const parsed: standardResponse = await response.json();
 
-            if (parsed.success) {
+            if (parsed.success && parsed.user) {
                 const {username, id} = parsed.user;
                 setLoginStatus(false);
                 setCurrentUser({username, id}); 
