@@ -1,0 +1,398 @@
+#msg-display {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow-y: auto;
+    height: 100%;
+}
+
+#msg-display.dark-mode {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+}
+
+/* Regular Message Container */
+.msg-container {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background-color: #f5f5f5;
+    word-wrap: break-word;
+    position: relative;
+    max-width: 70%;
+    margin-bottom: 0.5rem;
+}
+
+.msg-container.dark-mode {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+}
+
+.msg-container.your-msg {
+    align-self: flex-end;
+    background-color: #4a90e2;
+    color: white;
+    border-left: none;
+    border-right: 3px solid #00e67e;
+}
+
+.msg-container.your-msg .msg-text {
+    color: white;
+}
+
+.msg-container.your-msg .msg-username-date {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.msg-container.your-msg.dark-mode {
+    background-color: #3a7bc8;
+    color: white;
+}
+
+.msg-username-date {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0 0 0.3rem 0;
+    color: #666;
+}
+
+.msg-container.dark-mode .msg-username-date {
+    color: #aaa;
+}
+
+.msg-container.your-msg .msg-username-date {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.msg-text {
+    margin: 0;
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+/* AI Response Container */
+.ai-response-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    max-width: 70%;
+    margin-left: 3px;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.ai-response-container.dark-mode {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a3f8f 100%);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.gemini-logo {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    display: inline;
+    vertical-align: middle;
+    margin: 0 0.3rem;
+}
+
+.gemini-text {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #667eea;
+    margin: 0.4rem 0 0 0;
+}
+
+.msg-container.your-msg .gemini-text {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.gemini-text img {
+    width: 16px;
+    height: 16px;
+    display: inline;
+    vertical-align: middle;
+}
+
+.ai-response-container .msg-text {
+    flex: 1;
+    color: white;
+    margin: 0;
+}
+
+.ai-response-container .msg-time {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* Server Message */
+.server-msg-container {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    margin: 1rem 0;
+}
+
+.server-msg-container .msg-text {
+    font-size: 0.85rem;
+    color: #999;
+    font-style: italic;
+    text-align: center;
+}
+
+.server-msg-container.dark-mode .msg-text {
+    color: #666;
+}
+
+/* Delete Button */
+.delete-msg-btn {
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    background-color: rgba(255, 0, 0, 0.2);
+    color: #ff4444;
+    border: 1px solid #ff4444;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    align-self: flex-end;
+}
+
+.delete-msg-btn:hover {
+    background-color: rgba(255, 0, 0, 0.4);
+    color: #ff0000;
+}
+
+.delete-msg-btn.dark-mode {
+    background-color: rgba(255, 0, 0, 0.1);
+    color: #ff6b6b;
+}
+
+.delete-msg-btn.dark-mode:hover {
+    background-color: rgba(255, 0, 0, 0.3);
+}
+
+/* Send Message Input */
+#send-msg-input {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    background-color: white;
+    border-top: 1px solid #e0e0e0;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#send-msg-input.dark-mode {
+    background-color: #2a2a2a;
+    border-top-color: #444;
+}
+
+#message-send-bar {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background-color: white;
+    color: #333;
+    min-width: 200px;
+}
+
+#message-send-bar:focus {
+    outline: none;
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+#message-send-bar.dark-mode {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    border-color: #444;
+}
+
+#message-send-bar.dark-mode:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+#send-msg-btn {
+    padding: 0.6rem 1.5rem;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#send-msg-btn:hover {
+    background-color: #357abd;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+#send-msg-btn.dark-mode {
+    background-color: #4a90e2;
+}
+
+#send-msg-btn.dark-mode:hover {
+    background-color: #357abd;
+}
+
+label[for='if-ask-gemini'] {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: #333;
+    transition: all 0.2s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+
+label[for='if-ask-gemini']:hover {
+    color: #4a90e2;
+}
+
+label[for='if-ask-gemini'] img {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+#if-ask-gemini {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #667eea;
+    transition: all 0.2s ease;
+    display: inline;
+    flex-shrink: 0;
+}
+
+#if-ask-gemini:hover {
+    transform: scale(1.1);
+}
+
+#if-ask-gemini:checked {
+    accent-color: #4a90e2;
+}
+
+.gemini-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+#send-msg-input.dark-mode label[for='if-ask-gemini'] {
+    color: #f0f0f0;
+}
+
+#send-msg-input.dark-mode label[for='if-ask-gemini']:hover {
+    color: #667eea;
+}
+
+/* Mobile Responsive */
+@media screen and (max-width: 768px) {
+    #send-msg-input {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        align-items: stretch;
+        padding-bottom: 40px;
+    }
+
+    #message-send-bar {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    #send-msg-btn {
+        width: 100%;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .gemini-checkbox-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    label[for='if-ask-gemini'] {
+        gap: 0.3rem;
+        font-weight: 400;
+    }
+
+    label[for='if-ask-gemini'] img {
+        width: 14px;
+        height: 14px;
+    }
+
+    #if-ask-gemini {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    #send-msg-input {
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.5rem;
+        align-items: stretch;
+    }
+
+    #message-send-bar {
+        width: 100%;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    #send-msg-btn {
+        width: 100%;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .gemini-checkbox-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    label[for='if-ask-gemini'] {
+        gap: 0.2rem;
+        font-size: 0.75rem;
+        font-weight: 400;
+    }
+
+    label[for='if-ask-gemini'] img {
+        width: 12px;
+        height: 12px;
+    }
+
+    #if-ask-gemini {
+        width: 12px;
+        height: 12px;
+    }
+}
