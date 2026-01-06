@@ -106,6 +106,8 @@ export type ChatsPageProps = {
     currentUser: {username: string, id: number},
     currentFriends: CurrOutIncFriendsQuery[],
     ifLightMode: boolean
+    allChats: CurrChat[],
+    setAllChats: (value: CurrChat[])=> void,
 }
 export type CurrChat = {
     unread: boolean;
@@ -121,7 +123,6 @@ export type DisplayChatsProps = {
     setAddMembersDisplay: (value: boolean)=> void,
     currentUser: {username: string, id: number},
     allChats: CurrChat[],
-    setAllChats: (value: CurrChat[])=> void,
     currentFriends: CurrOutIncFriendsQuery[],
     ifLightMode: boolean,
     mobileView: string,

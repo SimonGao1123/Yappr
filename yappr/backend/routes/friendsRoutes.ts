@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database.js';
 import type {Request, Response} from 'express';
+import { io } from '../server.js';
 const router = express.Router();
 
 import type { CancelRequestInput, FriendRequestQuery, CheckIfUsernameOrID, CurrStatus, AcceptRejectRequestInput, SendRequestInput, UnfriendInput, CurrOutIncFriendsQuery, GetCurrFriendsResponse, GetIncFriendsResponse, GetOutFriendsResponse } from '../../definitions/friendsTypes.js';
@@ -34,12 +35,12 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
         );
 
         if (ifUsername.length !== 0) { // receiver_id is a username
-            idReceiver = ifUsername[0].user_id;
+            idReceiver = ifUsername[0]!.user_id;
             usernameReceiver = String(receiver_id);
         }
         else if (ifId.length !== 0) { // if receiver_id is a id
             idReceiver = Number(receiver_id);
-            usernameReceiver = ifId[0].username;
+            usernameReceiver = String(ifId[0]!.username);
         }
         else {
             return res.status(401).json({success: false, message: "User doesn't exist"});
@@ -69,6 +70,9 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
                 'INSERT INTO Friends (sender_id, receiver_id, status) VALUES (?, ?, ?)',
                 [sender_id, idReceiver, "pending"]
             );
+            // Notify the receiver of new friend request
+            io.to(`user_${idReceiver}`).emit('friendUpdate', { type: 'newRequest' });
+            io.to(`user_${sender_id}`).emit('friendUpdate', { type: 'sentRequest' });
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         }
 
@@ -115,10 +119,10 @@ router.post("/cancel", async (req: Request<{},{},CancelRequestInput>, res: Respo
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0].status !== "pending") {
+        if (rows[0]!.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0].receiver_id !== receiver_id) {
+        if (rows[0]!.receiver_id !== receiver_id) {
             return res.status(401).json({success: false, message: `You don't have a friend request to ${receiver_username}`});
         }
 
@@ -144,10 +148,10 @@ router.post("/reject", async (req: Request<{},{},AcceptRejectRequestInput>, res:
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0].status !== "pending") {
+        if (rows[0]!.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0].sender_id !== sender_id) {
+        if (rows[0]!.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
         }
 
@@ -155,6 +159,8 @@ router.post("/reject", async (req: Request<{},{},AcceptRejectRequestInput>, res:
             'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
             ["rejected", friend_id]
         );
+        // Notify sender that request was rejected
+        io.to(`user_${sender_id}`).emit('friendUpdate', { type: 'requestRejected' });
         return res.status(201).json({success: true, message: `Successfully rejected ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while rejecting friend request: ", err);
@@ -175,10 +181,10 @@ router.post("/accept", async (req: Request<{},{},AcceptRejectRequestInput>, res:
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0].status !== "pending") {
+        if (rows[0]!.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0].sender_id !== sender_id) {
+        if (rows[0]!.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
         }
 
@@ -186,6 +192,10 @@ router.post("/accept", async (req: Request<{},{},AcceptRejectRequestInput>, res:
             'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
             ["accepted", friend_id]
         );
+        // Notify both users that they are now friends
+        const receiver_id = rows[0]!.receiver_id;
+        io.to(`user_${sender_id}`).emit('friendUpdate', { type: 'requestAccepted' });
+        io.to(`user_${receiver_id}`).emit('friendUpdate', { type: 'newFriend' });
         return res.status(201).json({success: true, message: `Successfully accepted ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while accepting friend request: ", err);
@@ -205,7 +215,7 @@ router.post("/unfriend", async(req: Request<{},{},UnfriendInput>, res: Response<
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend not found"});
         }
-        if (rows[0].status !== "accepted") {
+        if (rows[0]!.status !== "accepted") {
             return res.status(401).json({success: false, message: "Currently not friends with user"});
         }
 

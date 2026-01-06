@@ -1,18 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense, useRef } from 'react'
+import { io, Socket } from 'socket.io-client';
 
 import './App.css'
 import LoginPage from './LoginPage/LoginPage.js';
-import FriendsPage from './FriendsPage/FriendsPage.js';
-import ChatsPage from './ChatsPage/ChatsPage.js';
-import Settings from './SettingsPage/Settings.js';
+// Lazy load pages that aren't immediately needed
+const FriendsPage = lazy(() => import('./FriendsPage/FriendsPage.js'));
+const ChatsPage = lazy(() => import('./ChatsPage/ChatsPage.js'));
+const Settings = lazy(() => import('./SettingsPage/Settings.js'));
 
 import settingsIcon from './images/Gear-icon.png';
 import settingsIconDark from './images/Gear-icon-Dark.png';
 import menuIcon from './images/menu-icon.svg';
 import menuIconDark from './images/menu-icon-dark.svg';
+
+
 import type { CurrUser, MeResponse } from '../definitions/loginTypes.js';
-import type { NavBarProps, standardResponse } from '../definitions/globalType.js';
+import type { NavBarProps } from '../definitions/globalType.js';
 import type { CurrOutIncFriendsQuery, GetCurrFriendsResponse, GetIncFriendsResponse, GetOutFriendsResponse } from '../definitions/friendsTypes.js';
+
+interface LightModeResponse {
+  success: boolean;
+  light_mode?: number;
+  message?: string;
+}
+import { Link, Route, Routes } from 'react-router-dom';
+import type { CurrChat, GetChatsResponse } from '../definitions/chatsTypes.js';
+import type { SelectMessagesFromChat } from '../definitions/messagingTypes.js';
 
 function App() {
     // LOGIN PAGE: 
@@ -25,17 +38,24 @@ function App() {
     const [incomingFriendReq, setInFriendReq] = useState<CurrOutIncFriendsQuery[]>([]); 
 
     // CHATS PAGE:
+    const [allChats, setAllChats] = useState<CurrChat[]>([]);
+
     const [displayIndex, setDisplayIndex] = useState(0); 
     /*
     DISPLAY INDEX:
     0 = chats page
     1 = friends page
     2 = settings page
+    
+    (Only for highlighting tabs)
     */
 
     const [ifLightMode, setIfLightMode] = useState(true); // true for light mode, false for dark mode
 
-    // runs every time refresh
+    // Socket.IO connection ref
+    const socketRef = useRef<Socket | null>(null);
+
+    // runs every time refresh - checks session on mount
     useEffect(() => {
       fetch("/userLogins/me", {
         method: "GET",
@@ -52,89 +72,108 @@ function App() {
         console.log("Error in identifying session", err);
       });
 
-    }, []); // will run everytime url path is changed, automatically logs in with user session
+    }, []); // Only run once on mount
 
+    // WebSocket connection and event handling
     useEffect(() => {
         if (!currentUser?.id) return;
-        fetch(`/settings/ifLightMode/${currentUser.id}`, {
-            method: "GET"
-        }).then(async res => {
-            const data: standardResponse = await res.json();
-            if (data.success) {
-                setIfLightMode(data.light_mode===1);
-            }
+        
+        // Initial data fetch
+        getAllData();
+        
+        // Connect to WebSocket
+        const socket = io({
+          withCredentials: true
         });
+        socketRef.current = socket;
+
+        // Join user's room
+        socket.emit('join', currentUser.id);
+
+        // Listen for new messages - refetch chats
+        socket.on('newMessage', (data: { chat_id: number }) => {
+          console.log('New message received in chat:', data.chat_id);
+          fetchChats();
+        });
+
+        // Listen for friend updates
+        socket.on('friendUpdate', (data: { type: string }) => {
+          console.log('Friend update:', data.type);
+          fetchFriends();
+        });
+
+        // Listen for chat updates
+        socket.on('chatUpdate', (data: { type: string, chat_id?: number }) => {
+          console.log('Chat update:', data.type);
+          fetchChats();
+        });
+
+        // Cleanup on unmount or user change
+        return () => {
+          socket.disconnect();
+          socketRef.current = null;
+        };
     }, [currentUser?.id]);
 
-    // auto update of friends
-    function getCurrentFriends () {
-        if (!currentUser) return;
-        fetch(`/friends/currFriends/${currentUser.id}`)
-                .then(res => res.json())
-                .then((data: GetCurrFriendsResponse) => {
-                    if (data.success) {
-                        setCurrentFriends(data.currFriends ?? []);
-                    }
-                })
-                .catch(err => console.log(err));
-    }
-    useEffect(() => {
-        if (!currentUser?.id) return;
-        getCurrentFriends();
-        const intervalId = setInterval(() => {
-            getCurrentFriends();
-        }, 2000);
-
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id, currentFriends, displayIndex]);
-
-    function getOutgoingRequests () {
-        if (!currentUser) return;
-        fetch(`/friends/outgoingRequests/${currentUser.id}`, {
-            method: "GET"
-        }).then(async response => {
-            const data: GetOutFriendsResponse = await response.json();
-            if (data.success) {
-                setOutFriendReq(data.outgoingRequests ?? []);
-            }
-            
-        }).catch(err => {
-            console.log(err);
-        });
-    }
-    useEffect(() => {
-        if (!currentUser?.id) return;
-        getOutgoingRequests();
-        const intervalId = setInterval(() => {
-            getOutgoingRequests();
-        }, 2000);
-
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id, outgoingFriendReq, displayIndex]);
-
-    function getIncomingReq () {
-        if (!currentUser) return;
-        fetch(`/friends/incomingRequests/${currentUser.id}`, {
-            method: "GET"
-        }).then(async response => {
-            const parsed: GetIncFriendsResponse = await response.json();
-            if (parsed.success) {
-                setInFriendReq(parsed.incomingRequests ?? []);
-            }
-        }).catch(err => {
-            console.log(err);
-        })
+    // Fetch only chats data
+    async function fetchChats() {
+      if (!currentUser?.id) return;
+      try {
+        const response = await fetch(`/chats/displayChats/${currentUser.id}`);
+        const ChatData: GetChatsResponse = await response.json();
+        if (ChatData.success) {
+          setAllChats(ChatData.chat_data ?? []);
+        }
+      } catch (err) {
+        console.error("Error fetching chats:", err);
+      }
     }
 
-    useEffect(() => {
-        if (!currentUser?.id) return;
-        getIncomingReq();
-        const intervalId = setInterval(() => {
-            getIncomingReq();
-        }, 2000);
+    // Fetch only friends data
+    async function fetchFriends() {
+      if (!currentUser?.id) return;
+      try {
+        const [IncRequests, OutRequests, CurrFriends]: [GetIncFriendsResponse, GetOutFriendsResponse, GetCurrFriendsResponse] = await Promise.all([
+          fetch(`/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/friends/currFriends/${currentUser.id}`).then(res => res.json())
+        ]);
+        
+        if (IncRequests.success) setInFriendReq(IncRequests.incomingRequests ?? []);
+        if (OutRequests.success) setOutFriendReq(OutRequests.outgoingRequests ?? []);
+        if (CurrFriends.success) setCurrentFriends(CurrFriends.currFriends ?? []);
+      } catch (err) {
+        console.error("Error fetching friends:", err);
+      }
+    }
 
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id, incomingFriendReq, displayIndex]);
+
+    // fetches all data from backend in parallel
+    async function getAllData () {
+      if (!currentUser?.id) return;
+      try {
+        const [ChatData, IncRequests, LightMode, OutRequests, CurrFriends]: [GetChatsResponse, GetIncFriendsResponse, LightModeResponse, GetOutFriendsResponse, GetCurrFriendsResponse]
+         = await Promise.all([
+          fetch(`/chats/displayChats/${currentUser.id}`).then(res => res.json()),
+          fetch(`/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/settings/ifLightMode/${currentUser.id}`).then(res => res.json()),
+          fetch(`/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/friends/currFriends/${currentUser.id}`).then(res => res.json())
+        ]);
+        if (!ChatData.success || !IncRequests.success || !OutRequests.success || !CurrFriends.success) throw new Error("One of the responses was not successful");
+        
+        setAllChats(ChatData.chat_data ?? []);
+        if (LightMode.success && LightMode.light_mode !== undefined) {
+          setIfLightMode(LightMode.light_mode === 1);
+        }
+        setInFriendReq(IncRequests.incomingRequests ?? []);
+        setOutFriendReq(OutRequests.outgoingRequests ?? []);
+        setCurrentFriends(CurrFriends.currFriends ?? []);
+        
+      } catch (err) {
+        console.error("One promise failed: ", err);
+      }
+    }
 
 
     const MAIN_PAGE = (
@@ -148,36 +187,45 @@ function App() {
 
         <main style={!ifLightMode?{backgroundColor: "#1e1e1e"}:{}} id="app-main-section">
           
-          {currentUser && (
+          {currentUser ?
           <>
-          {displayIndex===0?
-          <ChatsPage
-          currentUser={currentUser}
-          currentFriends={currentFriends}
-          ifLightMode={ifLightMode}
-          />
-          : displayIndex===1?
-          <FriendsPage
-            currentFriends={currentFriends}
-            outgoingFriendReq={outgoingFriendReq}
-            incomingFriendReq={incomingFriendReq}
-            currentUser={currentUser}
-            ifLightMode={ifLightMode}
-          />
-          : displayIndex=== 2?
-          <Settings
-          setCurrentUser={setCurrentUser}
-          setLoginStatus={setLoginStatus}
-          setDisplayIndex={setDisplayIndex}
-          currentUser={currentUser}
-          ifLightMode={ifLightMode} 
-          setIfLightMode={setIfLightMode}
-          />
-          :
-          <></>}
+          <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
+          <Routes>
+              <Route path="/" element={
+                <ChatsPage
+                currentUser={currentUser}
+                currentFriends={currentFriends}
+                ifLightMode={ifLightMode}
+                allChats={allChats}
+                setAllChats={setAllChats}
+                />
+              }/>
+                
+            <Route path="/friends" element={
+              <FriendsPage
+                currentFriends={currentFriends}
+                outgoingFriendReq={outgoingFriendReq}
+                incomingFriendReq={incomingFriendReq}
+                currentUser={currentUser}
+                ifLightMode={ifLightMode}
+              />
+            }/>
+            
+            <Route path="/settings" element={
+              <Settings
+                setCurrentUser={setCurrentUser}
+                setLoginStatus={setLoginStatus}
+                setDisplayIndex={setDisplayIndex}
+                currentUser={currentUser}
+                ifLightMode={ifLightMode} 
+                setIfLightMode={setIfLightMode}
+              />
+            }/>
+          </Routes>
+          </Suspense>
           <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div>
-          </>
-          )}
+          </> : <></>}
+          
         </main>
         
       </>
@@ -212,8 +260,8 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
     <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
       {/* Desktop Navigation */}
       <nav className="desktop-nav">
-        <button className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(0)} id="nav-chats-btn">Chats</button>
-        <button className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(1)} id="nav-friends-btn">Friends</button>
+        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
+        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn">Friends</Link>
       </nav>
       
       {/* Mobile Navigation */}
@@ -233,30 +281,30 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
         
         {menuOpen && (
           <div className={`dropdown-menu ${!ifLightMode?"dark-mode":""}`}>
-            <button 
+            <Link to="/"
               className={`dropdown-item ${displayIndex===0?"active":""} ${!ifLightMode?"dark-mode":""}`} 
               onClick={() => handleNavClick(0)}
             >
               Chats
-            </button>
-            <button 
+            </Link>
+            <Link to="/friends" 
               className={`dropdown-item ${displayIndex===1?"active":""} ${!ifLightMode?"dark-mode":""}`} 
               onClick={() => handleNavClick(1)}
             >
               Friends
-            </button>
-            <button 
+            </Link>
+            <Link to="/settings"
               className={`dropdown-item ${displayIndex===2?"active":""} ${!ifLightMode?"dark-mode":""}`} 
               onClick={() => handleNavClick(2)}
             >
               Settings
-            </button>
+            </Link>
           </div>
         )}
       </div>
       
-      <button className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
-        <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></button>
+      <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
+        <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></Link>
     </div>
   </>  
   );

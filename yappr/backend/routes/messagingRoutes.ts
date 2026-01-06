@@ -2,6 +2,7 @@ import express from 'express';
 import type {Request, Response} from 'express';
 import db from '../database.js';
 import mysql from 'mysql2/promise';
+import { io } from '../server.js';
 
 import type { SendMessageInput, SelectChatUsers, DeleteMessageInput, SelectIfMessageExists, ReadMessagesInput, SelectMessagesFromChat, GetAllChatsMessages, GetMessagesResponse, GetAllMessageId } from '../../definitions/messagingTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
@@ -31,6 +32,18 @@ router.post("/sendMessage", async (req: Request<{},{},SendMessageInput>, res: Re
             'INSERT INTO Messages (chat_id, sender_id, message) VALUES (?, ?, ?)',
             [chat_id, user_id, message]
         );
+
+        // Get all users in the chat and notify them
+        const [chatUsers] = await db.execute<SelectChatUsers[]>(
+            'SELECT user_id FROM Chat_Users WHERE chat_id=?',
+            [chat_id]
+        );
+        
+        // Emit to all users in the chat
+        chatUsers.forEach(user => {
+            io.to(`user_${user.user_id}`).emit('newMessage', { chat_id });
+        });
+
         return res.status(201).json({success: true, message: "Sent message"});
     } catch (err) {
         console.log(err);
@@ -51,13 +64,13 @@ router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res
             [message_id] 
         );
 
-        if (rows.length === 0 || rows[0].deleted) {
+        if (rows.length === 0 || rows[0]!.deleted) {
             return res.status(401).json({success: false, message: "message doesn't exist"});
         }
-        if (rows[0].sender_id !== sender_id) {
+        if (rows[0]!.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: "this is not message from sender"});
         }
-        if (rows[0].chat_id !== chat_id) {
+        if (rows[0]!.chat_id !== chat_id) {
             return res.status(401).json({success: false, message: "message is in a different chat"});
         }
 
@@ -123,9 +136,9 @@ router.post("/readMessages", async (req: Request<{},{},ReadMessagesInput>, res: 
 
         await db.query(
             'UPDATE Chat_Users SET last_seen_message_id=? WHERE user_id=? AND chat_id=?',
-            [rows[0].message_id, user_id, chat_id]
+            [rows[0]!.message_id, user_id, chat_id]
         ); 
-        return res.status(201).json({success: true, message: `successfully read chat, new message id: ${rows[0].message_id}`});
+        return res.status(201).json({success: true, message: `successfully read chat, new message id: ${rows[0]!.message_id}`});
     } catch (err) {
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});

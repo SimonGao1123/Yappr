@@ -10,11 +10,10 @@ import type { AddMembersPopupProps, ChatLayoutProps, ChatsPageProps, CreateChats
 import type { standardResponse } from '../../definitions/globalType.js';
 import type { CurrOutIncFriendsQuery } from '../../definitions/friendsTypes.js';
 
-function ChatsPage ({currentUser, currentFriends, ifLightMode}: ChatsPageProps) {
+function ChatsPage ({currentUser, currentFriends, ifLightMode, allChats, setAllChats}: ChatsPageProps) {
     // currentFriends holds array of {user_id, username, friend_id}
     const [createChatsDisplay, setCreateChatsDisplay] = useState(false);
     const [addMembersDisplay, setAddMembersDisplay] = useState(false);
-    const [allChats, setAllChats] = useState<CurrChat[]>([]);
     // Mobile view state: 'chats' | 'messages' | 'users'
     const [mobileView, setMobileView] = useState('chats');
     
@@ -28,7 +27,6 @@ function ChatsPage ({currentUser, currentFriends, ifLightMode}: ChatsPageProps) 
                 setAddMembersDisplay={setAddMembersDisplay}
                 currentUser={currentUser}
                 allChats={allChats}
-                setAllChats={setAllChats}
                 currentFriends={currentFriends}
                 ifLightMode={ifLightMode}
                 mobileView={mobileView}
@@ -38,46 +36,31 @@ function ChatsPage ({currentUser, currentFriends, ifLightMode}: ChatsPageProps) 
     )
 }
 
-function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, setAllChats, currentFriends, ifLightMode, mobileView, setMobileView}: DisplayChatsProps) {
+function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, currentFriends, ifLightMode, mobileView, setMobileView}: DisplayChatsProps) {
     const [selectedChat, setSelectedChat] = useState<CurrChat | null>(null); // holds {chat object}
     const [filterChats, setFilterChats] = useState("");
 
     useEffect(() => {
-        if (!currentUser?.id) return;
+        if (!selectedChat) return;
 
-        // initial fetch
-        getChatData(currentUser.id, setAllChats);
-        
-        const intervalId = setInterval(() => {
-            getChatData(currentUser.id, setAllChats);
-        }, 2000);
+        const updatedChat = allChats.find(
+            chat => chat.chat_id === selectedChat.chat_id
+        );
 
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id, allChats]);
-
-    useEffect(() => {
-    if (!selectedChat) return;
-
-    const updatedChat = allChats.find(
-        chat => chat.chat_id === selectedChat.chat_id
-    );
-
-    if (updatedChat) {
-        setSelectedChat(updatedChat);
-    } else {
-        // chat no longer exists, clear selection
-        setSelectedChat(null);
-        setMobileView('chats');
-    }
-}, [allChats]);
+        if (updatedChat) {
+            setSelectedChat(updatedChat);
+        } else {
+            // chat no longer exists, clear selection
+            setSelectedChat(null);
+            setMobileView('chats');
+        }
+    }, [allChats]);
 
     useEffect(() => {
         // reads
         if (!selectedChat) return;
         if (!selectedChat.unread) return;
         readMessages(selectedChat.chat_id, currentUser.id);
-        
-
     }, [selectedChat]);
 
     // Handle chat selection - switch to messages view on mobile
@@ -540,21 +523,6 @@ function rejectRequest (friend_id: number, sender_username: string, sender_id: n
         });
     }
 
-function getChatData (user_id: number, setAllChats: (value: CurrChat[]) => void) {
-    fetch(`/chats/displayChats/${user_id}`, {
-        method: "GET",
-    }).then(async response => {
-        const data: GetChatsResponse = await response.json();
-
-        if (!data.success) {
-            console.log(data.message);
-            return;
-        }
-        setAllChats(data.chat_data || []);
-    }).catch(err => {
-        console.log(err);
-    });
-}
 
 function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, ifLightMode}: CreateChatsPopupProps) {
     const [selectedFriends, setSelectedFriends] = useState<CurrOutIncFriendsQuery[]>([]);
