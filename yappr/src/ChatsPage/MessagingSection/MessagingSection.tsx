@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useEffect } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback } from 'react'
 
 import geminiLogo from '../../images/gemini-logo.png';
 import './MessagingSection.css';
@@ -7,7 +6,8 @@ import type { MessagingSectionProp, PastMessagesDataProp, SendMessageInput, Send
 import type { standardResponse } from '../../../definitions/globalType.js';
 
 function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSectionProp) {
-    const [pastMessageData, setMessageData] = useState<SelectMessagesFromChat[]>([]); // only specific to certain messages
+    const [pastMessageData, setMessageData] = useState<SelectMessagesFromChat[]>([]);
+    
     useEffect(() => {
             if (!currentUser?.id) return;
     
@@ -20,7 +20,7 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
             }, 2000);
     
             return () => clearInterval(intervalId);
-        }, [currentUser?.id, chat_id, pastMessageData]);
+        }, [currentUser?.id, chat_id]); // Remove pastMessageData to prevent infinite re-renders
         
     return (
         <>
@@ -33,17 +33,20 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
         </>
     );
 }
-function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode}: PastMessagesDataProp) {
-    // display for past messages
 
-    const messageDisplay = [];
+// cache past messages to prevent re-renders when parent updates
+const PastMessagesData = memo(function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode}: PastMessagesDataProp) {
+    // display for past messages - memoized to prevent re-renders when parent updates
+
+    const messageDisplay = useMemo(() => {
+    const messages = [];
     for (const messageData of pastMessageData) {
         // each message is {message_id, sender_id, message, username, sent_at}
         const {message_id, sender_id, message, username, sent_at, askGemini} = messageData;
 
         if (sender_id !== -1 && askGemini === 1) {
             // prompt
-            messageDisplay.push(
+            messages.push(
                 <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
                     <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
                     <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
@@ -56,7 +59,7 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode}:
             );
         } else if (sender_id === -1 && askGemini === 1) {
             // gemini response
-            messageDisplay.push(
+            messages.push(
                 <li className={`ai-response-container ${!ifLightMode?"dark-mode":""}`} key={message_id}>
                     <img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/>
                     <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
@@ -65,13 +68,13 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode}:
             );
         } else if (sender_id === -1) {
             // server message different format
-            messageDisplay.push(
-            <li className='server-msg-container'>
+            messages.push(
+            <li className='server-msg-container' key={message_id}>
                 <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message} {formatDateTimeSmart(sent_at)}</p>
             </li>
             );
         } else {
-            messageDisplay.push(
+            messages.push(
                 <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
                     <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
                     <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
@@ -82,15 +85,15 @@ function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode}:
         }
     }
 
+    return messages;
+    }, [pastMessageData, currentUser.id, chat_id, ifLightMode]);
+
     return (
         <ul id="msg-display" className={!ifLightMode?"dark-mode":""}>
             {messageDisplay}
         </ul>
     );
-
-
-
-}
+});
 
 function SendMessageInput ({currentUser, chat_id, ifLightMode}: SendMessageInputProp) {
     const [message, setMessage] = useState("");
