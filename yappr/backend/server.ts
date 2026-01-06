@@ -6,8 +6,6 @@ dotenv.config();
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
 
 import session from 'express-session';
 import helmet from 'helmet';
@@ -32,49 +30,6 @@ const publicDir = path.join(__dirname, 'public');
 const indexPath = path.join(publicDir, 'index.html');
 
 const app = express();
-const httpServer = createServer(app);
-
-// Socket.IO setup
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.NODE_ENV === 'production' ? false : ['http://localhost:5173', 'http://localhost:3000'],
-    credentials: true
-  }
-});
-
-// Store connected users: Map<userId, Set<socketId>>
-const connectedUsers = new Map<number, Set<string>>();
-
-io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
-
-  // User joins with their userId
-  socket.on('join', (userId: number) => {
-    if (!connectedUsers.has(userId)) {
-      connectedUsers.set(userId, new Set());
-    }
-    connectedUsers.get(userId)!.add(socket.id);
-    socket.join(`user_${userId}`);
-    console.log(`User ${userId} joined with socket ${socket.id}`);
-  });
-
-  socket.on('disconnect', () => {
-    // Remove socket from all users
-    connectedUsers.forEach((sockets, userId) => {
-      if (sockets.has(socket.id)) {
-        sockets.delete(socket.id);
-        if (sockets.size === 0) {
-          connectedUsers.delete(userId);
-        }
-      }
-    });
-    console.log('Socket disconnected:', socket.id);
-  });
-});
-
-// Export io for use in routes
-export { io, connectedUsers };
-
 app.use(express.json());
 
 // If running behind a proxy (Heroku, nginx, Cloud Run, etc.)
@@ -181,7 +136,6 @@ function validatePublicDir() {
 
 validatePublicDir();
 
-httpServer.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
-  console.log('WebSocket server enabled');
 });

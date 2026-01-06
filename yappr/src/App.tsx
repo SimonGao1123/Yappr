@@ -1,5 +1,4 @@
-import { useEffect, useState, lazy, Suspense, useRef } from 'react'
-import { io, Socket } from 'socket.io-client';
+import { useEffect, useState, lazy, Suspense } from 'react'
 
 import './App.css'
 import LoginPage from './LoginPage/LoginPage.js';
@@ -52,9 +51,6 @@ function App() {
 
     const [ifLightMode, setIfLightMode] = useState(true); // true for light mode, false for dark mode
 
-    // Socket.IO connection ref
-    const socketRef = useRef<Socket | null>(null);
-
     // runs every time refresh - checks session on mount
     useEffect(() => {
       fetch("/userLogins/me", {
@@ -74,78 +70,15 @@ function App() {
 
     }, []); // Only run once on mount
 
-    // WebSocket connection and event handling
     useEffect(() => {
         if (!currentUser?.id) return;
-        
-        // Initial data fetch
-        getAllData();
-        
-        // Connect to WebSocket
-        const socket = io({
-          withCredentials: true
-        });
-        socketRef.current = socket;
+          getAllData()
+        const intervalId = setInterval(() => {
+          getAllData()
+        }, 500);
 
-        // Join user's room
-        socket.emit('join', currentUser.id);
-
-        // Listen for new messages - refetch chats
-        socket.on('newMessage', (data: { chat_id: number }) => {
-          console.log('New message received in chat:', data.chat_id);
-          fetchChats();
-        });
-
-        // Listen for friend updates
-        socket.on('friendUpdate', (data: { type: string }) => {
-          console.log('Friend update:', data.type);
-          fetchFriends();
-        });
-
-        // Listen for chat updates
-        socket.on('chatUpdate', (data: { type: string, chat_id?: number }) => {
-          console.log('Chat update:', data.type);
-          fetchChats();
-        });
-
-        // Cleanup on unmount or user change
-        return () => {
-          socket.disconnect();
-          socketRef.current = null;
-        };
-    }, [currentUser?.id]);
-
-    // Fetch only chats data
-    async function fetchChats() {
-      if (!currentUser?.id) return;
-      try {
-        const response = await fetch(`/chats/displayChats/${currentUser.id}`);
-        const ChatData: GetChatsResponse = await response.json();
-        if (ChatData.success) {
-          setAllChats(ChatData.chat_data ?? []);
-        }
-      } catch (err) {
-        console.error("Error fetching chats:", err);
-      }
-    }
-
-    // Fetch only friends data
-    async function fetchFriends() {
-      if (!currentUser?.id) return;
-      try {
-        const [IncRequests, OutRequests, CurrFriends]: [GetIncFriendsResponse, GetOutFriendsResponse, GetCurrFriendsResponse] = await Promise.all([
-          fetch(`/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/currFriends/${currentUser.id}`).then(res => res.json())
-        ]);
-        
-        if (IncRequests.success) setInFriendReq(IncRequests.incomingRequests ?? []);
-        if (OutRequests.success) setOutFriendReq(OutRequests.outgoingRequests ?? []);
-        if (CurrFriends.success) setCurrentFriends(CurrFriends.currFriends ?? []);
-      } catch (err) {
-        console.error("Error fetching friends:", err);
-      }
-    }
+        return () => clearInterval(intervalId);
+    }, [currentUser?.id]); // Remove state dependencies to prevent infinite re-renders
 
 
     // fetches all data from backend in parallel
