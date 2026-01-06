@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database.js';
 import type {Request, Response} from 'express';
+import { io } from '../server.js';
 const router = express.Router();
 
 import type { CancelRequestInput, FriendRequestQuery, CheckIfUsernameOrID, CurrStatus, AcceptRejectRequestInput, SendRequestInput, UnfriendInput, CurrOutIncFriendsQuery, GetCurrFriendsResponse, GetIncFriendsResponse, GetOutFriendsResponse } from '../../definitions/friendsTypes.js';
@@ -69,6 +70,9 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
                 'INSERT INTO Friends (sender_id, receiver_id, status) VALUES (?, ?, ?)',
                 [sender_id, idReceiver, "pending"]
             );
+            // Notify the receiver of new friend request
+            io.to(`user_${idReceiver}`).emit('friendUpdate', { type: 'newRequest' });
+            io.to(`user_${sender_id}`).emit('friendUpdate', { type: 'sentRequest' });
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         }
 
@@ -155,6 +159,8 @@ router.post("/reject", async (req: Request<{},{},AcceptRejectRequestInput>, res:
             'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
             ["rejected", friend_id]
         );
+        // Notify sender that request was rejected
+        io.to(`user_${sender_id}`).emit('friendUpdate', { type: 'requestRejected' });
         return res.status(201).json({success: true, message: `Successfully rejected ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while rejecting friend request: ", err);
@@ -186,6 +192,10 @@ router.post("/accept", async (req: Request<{},{},AcceptRejectRequestInput>, res:
             'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
             ["accepted", friend_id]
         );
+        // Notify both users that they are now friends
+        const receiver_id = rows[0]!.receiver_id;
+        io.to(`user_${sender_id}`).emit('friendUpdate', { type: 'requestAccepted' });
+        io.to(`user_${receiver_id}`).emit('friendUpdate', { type: 'newFriend' });
         return res.status(201).json({success: true, message: `Successfully accepted ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while accepting friend request: ", err);

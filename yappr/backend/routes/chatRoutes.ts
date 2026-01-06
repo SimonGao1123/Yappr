@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database.js';
 import type {Request, Response} from 'express';
+import { io } from '../server.js';
 import type{ GetFriendsId, CreateChatInput, LeaveChatInput, UsersInGroupQuery, DeleteChatInput, NewLeaderUsernameQuery, ChatIdWithUserQuery, AllUsersInChatQuery, UsernameInChatQuery, CheckStatusQuery, RowChatDataQuery, MostUpToDateMessageQuery, LastSeenMessageQuery, AddToChatInput, CurrUsersQuery, CheckExistingFriendshipQuery, CheckExistingMemberShipQuery, AddToChatResponse, KickUserInput, EditChatNameInput, CurrChat, GetChatsResponse } from '../../definitions/chatsTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 import type { ResultSetHeader } from 'mysql2';
@@ -55,6 +56,12 @@ router.post("/createChat", async (req: Request<{},{},CreateChatInput>, res: Resp
             'INSERT INTO Messages (chat_id, sender_id, message) VALUES(?,?,?)',
             [insertedId, -1, `${creator_username} has created chat: "${chat_name}"`]
         );
+
+        // Notify all users in the new chat
+        io.to(`user_${creator_id}`).emit('chatUpdate', { type: 'newChat', chat_id: insertedId });
+        for (const friend of addedFriends) {
+            io.to(`user_${friend.user_id}`).emit('chatUpdate', { type: 'newChat', chat_id: insertedId });
+        }
 
         return res.status(201).json({success: true, message: `Successfully created ${chat_name}`})
 
