@@ -51,13 +51,13 @@ router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res
             [message_id] 
         );
 
-        if (rows.length === 0 || rows[0].deleted) {
+        if (rows.length === 0 || rows[0]!.deleted) {
             return res.status(401).json({success: false, message: "message doesn't exist"});
         }
-        if (rows[0].sender_id !== sender_id) {
+        if (rows[0]!.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: "this is not message from sender"});
         }
-        if (rows[0].chat_id !== chat_id) {
+        if (rows[0]!.chat_id !== chat_id) {
             return res.status(401).json({success: false, message: "message is in a different chat"});
         }
 
@@ -123,9 +123,9 @@ router.post("/readMessages", async (req: Request<{},{},ReadMessagesInput>, res: 
 
         await db.query(
             'UPDATE Chat_Users SET last_seen_message_id=? WHERE user_id=? AND chat_id=?',
-            [rows[0].message_id, user_id, chat_id]
+            [rows[0]!.message_id, user_id, chat_id]
         ); 
-        return res.status(201).json({success: true, message: `successfully read chat, new message id: ${rows[0].message_id}`});
+        return res.status(201).json({success: true, message: `successfully read chat, new message id: ${rows[0]!.message_id}`});
     } catch (err) {
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});

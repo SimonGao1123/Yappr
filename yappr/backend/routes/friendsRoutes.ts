@@ -34,12 +34,12 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
         );
 
         if (ifUsername.length !== 0) { // receiver_id is a username
-            idReceiver = ifUsername[0].user_id;
+            idReceiver = ifUsername[0]!.user_id;
             usernameReceiver = String(receiver_id);
         }
         else if (ifId.length !== 0) { // if receiver_id is a id
             idReceiver = Number(receiver_id);
-            usernameReceiver = ifId[0].username;
+            usernameReceiver = String(ifId[0]!.username);
         }
         else {
             return res.status(401).json({success: false, message: "User doesn't exist"});
@@ -115,10 +115,10 @@ router.post("/cancel", async (req: Request<{},{},CancelRequestInput>, res: Respo
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0].status !== "pending") {
+        if (rows[0]!.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0].receiver_id !== receiver_id) {
+        if (rows[0]!.receiver_id !== receiver_id) {
             return res.status(401).json({success: false, message: `You don't have a friend request to ${receiver_username}`});
         }
 
@@ -144,10 +144,10 @@ router.post("/reject", async (req: Request<{},{},AcceptRejectRequestInput>, res:
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0].status !== "pending") {
+        if (rows[0]!.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0].sender_id !== sender_id) {
+        if (rows[0]!.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
         }
 
@@ -175,10 +175,10 @@ router.post("/accept", async (req: Request<{},{},AcceptRejectRequestInput>, res:
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0].status !== "pending") {
+        if (rows[0]!.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0].sender_id !== sender_id) {
+        if (rows[0]!.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
         }
 
@@ -205,7 +205,7 @@ router.post("/unfriend", async(req: Request<{},{},UnfriendInput>, res: Response<
         if (rows.length === 0) {
             return res.status(401).json({success: false, message: "Friend not found"});
         }
-        if (rows[0].status !== "accepted") {
+        if (rows[0]!.status !== "accepted") {
             return res.status(401).json({success: false, message: "Currently not friends with user"});
         }
 

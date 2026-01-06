@@ -10,9 +10,12 @@ import settingsIcon from './images/Gear-icon.png';
 import settingsIconDark from './images/Gear-icon-Dark.png';
 import menuIcon from './images/menu-icon.svg';
 import menuIconDark from './images/menu-icon-dark.svg';
+
+
 import type { CurrUser, MeResponse } from '../definitions/loginTypes.js';
 import type { NavBarProps, standardResponse } from '../definitions/globalType.js';
 import type { CurrOutIncFriendsQuery, GetCurrFriendsResponse, GetIncFriendsResponse, GetOutFriendsResponse } from '../definitions/friendsTypes.js';
+import { Link, Route, Routes } from 'react-router-dom';
 
 function App() {
     // LOGIN PAGE: 
@@ -31,6 +34,8 @@ function App() {
     0 = chats page
     1 = friends page
     2 = settings page
+    
+    (Only for highlighting tabs)
     */
 
     const [ifLightMode, setIfLightMode] = useState(true); // true for light mode, false for dark mode
@@ -148,36 +153,40 @@ function App() {
 
         <main style={!ifLightMode?{backgroundColor: "#1e1e1e"}:{}} id="app-main-section">
           
-          {currentUser && (
+          {currentUser ?
           <>
-          {displayIndex===0?
-          <ChatsPage
-          currentUser={currentUser}
-          currentFriends={currentFriends}
-          ifLightMode={ifLightMode}
-          />
-          : displayIndex===1?
-          <FriendsPage
-            currentFriends={currentFriends}
-            outgoingFriendReq={outgoingFriendReq}
-            incomingFriendReq={incomingFriendReq}
-            currentUser={currentUser}
-            ifLightMode={ifLightMode}
-          />
-          : displayIndex=== 2?
-          <Settings
-          setCurrentUser={setCurrentUser}
-          setLoginStatus={setLoginStatus}
-          setDisplayIndex={setDisplayIndex}
-          currentUser={currentUser}
-          ifLightMode={ifLightMode} 
-          setIfLightMode={setIfLightMode}
-          />
-          :
-          <></>}
+          <Routes>
+              <Route path="/" element={
+                <ChatsPage
+                currentUser={currentUser}
+                currentFriends={currentFriends}
+                ifLightMode={ifLightMode}
+                />
+              }/>
+                
+            <Route path="/friends" element={
+              <FriendsPage
+                currentFriends={currentFriends}
+                outgoingFriendReq={outgoingFriendReq}
+                incomingFriendReq={incomingFriendReq}
+                currentUser={currentUser}
+                ifLightMode={ifLightMode}
+              />
+            }/>
+            
+            <Route path="/settings" element={
+              <Settings
+                setCurrentUser={setCurrentUser}
+                setLoginStatus={setLoginStatus}
+                setDisplayIndex={setDisplayIndex}
+                currentUser={currentUser}
+                ifLightMode={ifLightMode} 
+                setIfLightMode={setIfLightMode}
+              />
+            }/>
+          </Routes>
           <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div>
-          </>
-          )}
+          </> : <></>}
         </main>
         
       </>
@@ -212,8 +221,8 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
     <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
       {/* Desktop Navigation */}
       <nav className="desktop-nav">
-        <button className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(0)} id="nav-chats-btn">Chats</button>
-        <button className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} onClick={() => setDisplayIndex(1)} id="nav-friends-btn">Friends</button>
+        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
+        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn">Friends</Link>
       </nav>
       
       {/* Mobile Navigation */}
@@ -233,30 +242,30 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
         
         {menuOpen && (
           <div className={`dropdown-menu ${!ifLightMode?"dark-mode":""}`}>
-            <button 
+            <Link to="/"
               className={`dropdown-item ${displayIndex===0?"active":""} ${!ifLightMode?"dark-mode":""}`} 
               onClick={() => handleNavClick(0)}
             >
               Chats
-            </button>
-            <button 
+            </Link>
+            <Link to="/friends" 
               className={`dropdown-item ${displayIndex===1?"active":""} ${!ifLightMode?"dark-mode":""}`} 
               onClick={() => handleNavClick(1)}
             >
               Friends
-            </button>
-            <button 
+            </Link>
+            <Link to="/settings"
               className={`dropdown-item ${displayIndex===2?"active":""} ${!ifLightMode?"dark-mode":""}`} 
               onClick={() => handleNavClick(2)}
             >
               Settings
-            </button>
+            </Link>
           </div>
         )}
       </div>
       
-      <button className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
-        <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></button>
+      <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
+        <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></Link>
     </div>
   </>  
   );

@@ -105,6 +105,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // ---------- Basic error handler ----------
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  // Ignore aborted requests (client disconnected) - this is normal behavior
+  if (err.code === 'ECONNABORTED' || err.code === 'ECONNRESET') {
+    return;
+  }
   console.error('Unhandled error:', err);
   if (!res.headersSent) {
     res.status(err.status || 500).send(err.expose ? err.message : 'Server error');

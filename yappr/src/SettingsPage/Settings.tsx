@@ -4,6 +4,7 @@ import './Settings.css';
 
 import type { UpdateUsernameProp, ThemeToggleProp, AlterDescriptionProps, SettingsProps } from '../../definitions/settingsTypes.ts';
 import type { standardResponse } from '../../definitions/globalType.js';
+import { Link } from 'react-router-dom';
 
 function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser, ifLightMode, setIfLightMode}: SettingsProps) {
     return (
@@ -13,7 +14,7 @@ function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser
 
             <ThemeToggle ifLightMode={ifLightMode} setIfLightMode={setIfLightMode} currentUser={currentUser}/>
             
-            <button onClick={() => logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex)} id="logout-btn" className={!ifLightMode?"dark-mode":""}>Logout</button>
+            <Link to="/" onClick={() => logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex)} id="logout-btn" className={!ifLightMode?"dark-mode":""}>Logout</Link>
         </main>
     );
 }
