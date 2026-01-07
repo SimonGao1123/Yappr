@@ -66,6 +66,7 @@ export type SendMessageInputProp = {
     currentUser: {username: string, id: number}, 
     chat_id: number, 
     ifLightMode: boolean
+    setMessageData: (value: SelectMessagesFromChat[]) => void;
 }
 export type PromptGeminiInput = {
     prompt: string, 

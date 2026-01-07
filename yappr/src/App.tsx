@@ -75,7 +75,7 @@ function App() {
           getAllData()
         const intervalId = setInterval(() => {
           getAllData()
-        }, 500);
+        }, 1000);
 
         return () => clearInterval(intervalId);
     }, [currentUser?.id]); // Remove state dependencies to prevent infinite re-renders
