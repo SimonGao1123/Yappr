@@ -38,11 +38,14 @@
     "@types/express-session": "^1.18.2",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
+    "@types/supertest": "^6.0.3",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "tsx": "^4.21.0"
+    "supertest": "^7.2.2",
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.16"
   },
   "engines": {
     "node": "20.x"
