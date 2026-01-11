@@ -29,6 +29,7 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
             currentUser={currentUser}
             chat_id={chat_id}
             ifLightMode={ifLightMode}
+            setMessageData={setMessageData}
             />
         </>
     );
@@ -95,7 +96,7 @@ const PastMessagesData = memo(function PastMessagesData ({pastMessageData, curre
     );
 });
 
-function SendMessageInput ({currentUser, chat_id, ifLightMode}: SendMessageInputProp) {
+function SendMessageInput ({currentUser, chat_id, ifLightMode, setMessageData}: SendMessageInputProp) {
     const [message, setMessage] = useState("");
     const [ifAskAI, setIfAskAI] = useState(false);
 
@@ -104,9 +105,9 @@ function SendMessageInput ({currentUser, chat_id, ifLightMode}: SendMessageInput
             <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)}/>
             <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
                 !ifAskAI?
-                sendMessage(chat_id, message, currentUser.id, setMessage)
+                sendMessage(chat_id, message, currentUser.id, setMessage, setMessageData)
                 :
-                promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username);
+                promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username, setMessageData);
                 }}>Send</button>
             <div className="gemini-checkbox-wrapper">
                 <label htmlFor='if-ask-gemini'><img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/> Ask Gemini</label>
@@ -115,7 +116,7 @@ function SendMessageInput ({currentUser, chat_id, ifLightMode}: SendMessageInput
         </div>
     );
 }
-function promptAI (setMessage:(value: string)=> void, setIfAskAI:(value: boolean)=> void, prompt: string, chat_id: number, user_id: number, username: string) {
+function promptAI (setMessage:(value: string)=> void, setIfAskAI:(value: boolean)=> void, prompt: string, chat_id: number, user_id: number, username: string, setMessageData: (value: SelectMessagesFromChat[]) => void) {
     fetch("/gemini/prompt", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -130,6 +131,8 @@ function promptAI (setMessage:(value: string)=> void, setIfAskAI:(value: boolean
     setIfAskAI(false);
 
     readMessages(chat_id, user_id)
+    // update messages so it updates immediately
+    getPastMessages(user_id, setMessageData, chat_id);
 }
 function formatDateTimeSmart(isoString: string): string {
   const date = new Date(isoString);
@@ -178,7 +181,7 @@ function getPastMessages (user_id: number, setMessageData: (value: SelectMessage
 
 
 }
-function sendMessage (chat_id: number, message: string, user_id: number, setMessage: (value: string) => void) {
+function sendMessage (chat_id: number, message: string, user_id: number, setMessage: (value: string) => void, setMessageData: (value: SelectMessagesFromChat[]) => void) {
     fetch("/message/sendMessage", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -192,6 +195,7 @@ function sendMessage (chat_id: number, message: string, user_id: number, setMess
     setMessage("");
 
     readMessages(chat_id, user_id)
+    getPastMessages(user_id, setMessageData, chat_id);
 }
 function deleteMessage (message_id: number, user_id: number, sender_id: number, chat_id: number) {
     fetch("/message/deleteMessage", {

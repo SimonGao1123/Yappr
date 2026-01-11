@@ -11,7 +11,7 @@ import type { standardResponse } from '../../definitions/globalType.js';
 router.get("/me", (req: Request, res: Response<MeResponse>) => {
     if (!req.session.userId) {
         // no session detected
-        return res.json({loggedIn: false});
+        return res.status(200).json({loggedIn: false});
     }
 
     return res.json({loggedIn: true, 

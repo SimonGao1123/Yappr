@@ -15,7 +15,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const router = express.Router();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 
 router.post("/prompt", async (req:Request<{},{},PromptGeminiInput>, res:Response<standardResponse>) => {

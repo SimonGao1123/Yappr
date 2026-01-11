@@ -16,10 +16,23 @@ function ChatsPage ({currentUser, currentFriends, ifLightMode, allChats, setAllC
     const [addMembersDisplay, setAddMembersDisplay] = useState(false);
     // Mobile view state: 'chats' | 'messages' | 'users'
     const [mobileView, setMobileView] = useState('chats');
+
+    // Function to refresh chats from the server
+    const refreshChats = async () => {
+        try {
+            const response = await fetch(`/chats/displayChats/${currentUser.id}`);
+            const parsed: GetChatsResponse = await response.json();
+            if (parsed.success && parsed.chat_data) {
+                setAllChats(parsed.chat_data);
+            }
+        } catch (err) {
+            console.log("Error refreshing chats:", err);
+        }
+    };
     
     return (
         <>
-            {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay} ifLightMode={ifLightMode}/> : <></>}
+            {createChatsDisplay ? <CreateChatsPopUp currentFriends={currentFriends} currentUser={currentUser} setCreateChatsDisplay={setCreateChatsDisplay} ifLightMode={ifLightMode} refreshChats={refreshChats}/> : <></>}
 
             <DisplayChats 
                 setCreateChatsDisplay={setCreateChatsDisplay}
@@ -31,12 +44,13 @@ function ChatsPage ({currentUser, currentFriends, ifLightMode, allChats, setAllC
                 ifLightMode={ifLightMode}
                 mobileView={mobileView}
                 setMobileView={setMobileView}
+                refreshChats={refreshChats}
             />
         </>
     )
 }
 
-function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, currentFriends, ifLightMode, mobileView, setMobileView}: DisplayChatsProps) {
+function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersDisplay, currentUser, allChats, currentFriends, ifLightMode, mobileView, setMobileView, refreshChats}: DisplayChatsProps & {refreshChats: () => Promise<void>}) {
     const [selectedChat, setSelectedChat] = useState<CurrChat | null>(null); // holds {chat object}
     const [filterChats, setFilterChats] = useState("");
 
@@ -63,6 +77,11 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
         readMessages(selectedChat.chat_id, currentUser.id);
     }, [selectedChat]);
 
+    // Refresh chats whenever selected chat changes
+    useEffect(() => {
+        refreshChats();
+    }, [selectedChat?.chat_id]);
+
     // Handle chat selection - switch to messages view on mobile
     const handleChatSelect = (chat: CurrChat) => {
         setSelectedChat(chat);
@@ -83,9 +102,10 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                 
                 <div className="chat-button-container">
                     {chat.creator_id===currentUser.id ? 
-                    <button id="delete-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={(e) => {
+                    <button id="delete-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={async (e) => {
                         e.stopPropagation();
-                        deleteChat(currentUser.id, chat.chat_id, chat.creator_id)
+                        await deleteChat(currentUser.id, chat.chat_id, chat.creator_id);
+                        await refreshChats();
                         if (chat.chat_id===selectedChat?.chat_id) {
                             setSelectedChat(null);
                             setMobileView('chats');
@@ -93,9 +113,10 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                         setAddMembersDisplay(false);
                     }}>Delete</button> 
                     : <></>}
-                    <button id="leave-btn" className={!ifLightMode?"dark-mode":""} onClick={(e) => {
+                    <button id="leave-btn" className={!ifLightMode?"dark-mode":""} onClick={async (e) => {
                         e.stopPropagation();
-                        leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id)
+                        await leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id);
+                        await refreshChats();
                         console.log(chat.chat_id + ", " + selectedChat?.chat_id);
                         if (chat.chat_id===selectedChat?.chat_id) {
                             setSelectedChat(null);
@@ -172,6 +193,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                     currentUser={currentUser}
                     ifLightMode={ifLightMode}
                     selectedChat={selectedChat}
+                    refreshChats={refreshChats}
                 /> 
                 <UsersLayout
                     addMembersDisplay={addMembersDisplay}
@@ -182,6 +204,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                     currentUser={currentUser}
                     currentFriends={currentFriends}
                     ifLightMode={ifLightMode}
+                    refreshChats={refreshChats}
                 />
                 </>
                 
@@ -191,7 +214,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
     );
 
 }
-function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat}: ChatLayoutProps) {
+function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat, refreshChats}: ChatLayoutProps & {refreshChats: () => Promise<void>}) {
     // middle column
 
     const [editingChatName, setEditingChatName] = useState(false);
@@ -203,7 +226,10 @@ function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat
                 {editingChatName ? <input className={!ifLightMode?"dark-mode":""} placeholder="New chat name" id="new-chat-name-input" type='text' maxLength={30} value={newChatName} onChange={(e) => setNewChatName(e.target.value)}/> : chat_name}    
                 {selectedChat.creator_id===currentUser.id ? 
                 editingChatName?
-                <button className={!ifLightMode?"dark-mode":""} id="update-chat-name-btn" onClick={() => editChatName(setEditingChatName, newChatName, chat_id, currentUser.id, selectedChat.creator_id, currentUser.username)}>
+                <button className={!ifLightMode?"dark-mode":""} id="update-chat-name-btn" onClick={async () => {
+                    await editChatName(setEditingChatName, newChatName, chat_id, currentUser.id, selectedChat.creator_id, currentUser.username);
+                    await refreshChats();
+                }}>
                     <img src={updateChatNameIcon} id="update-chat-icon" alt="update"/>
                 </button>
                 :
@@ -222,21 +248,22 @@ function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat
     );
 }
 
-function editChatName (setEditingChatName: (value: boolean) => void, newChatName: string, chat_id: number, user_id: number, creator_id: number, username: string) {
+async function editChatName (setEditingChatName: (value: boolean) => void, newChatName: string, chat_id: number, user_id: number, creator_id: number, username: string) {
     setEditingChatName(false);
-    fetch("/chats/editChatName", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({newChatName, chat_id, user_id, creator_id, username})
-    }).then(async response => {
+    try {
+        const response = await fetch("/chats/editChatName", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({newChatName, chat_id, user_id, creator_id, username})
+        });
         const parsed: standardResponse = await response.json();
         console.log(parsed.message);
-    }).catch(err => {
+    } catch (err) {
         console.log(err);
-    })  
+    }
 }
 
-function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userList, creator_id, currentUser, currentFriends, ifLightMode}: UsersLayoutProps) {
+function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userList, creator_id, currentUser, currentFriends, ifLightMode, refreshChats}: UsersLayoutProps & {refreshChats: () => Promise<void>}) {
     // userList contains array of {friend_id (could be null), user_id, status, username}
     const userDisplay = [];
     const [userDetailsOpened, setUserDetailsOpen] = useState<number | null>(null); // holds user_id
@@ -306,7 +333,10 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                 {`${creator_id===user_id?"👑":""}`}{username}{currentUser.id===user_id?"(You)":""}
                 <p className={`desc-friends ${!ifLightMode?"dark-mode":""}`}>{descFriends}</p>
                 {creator_id===currentUser.id && currentUser.id !== user_id?
-                <button className={`kick-btn ${!ifLightMode?"dark-mode":""}`} onClick={()=>kickUser(creator_id, currentUser.id, currentUser.username, user_id, username ?? "", chat_id)}>Kick</button>:<></>}
+                <button className={`kick-btn ${!ifLightMode?"dark-mode":""}`} onClick={async ()=>{
+                    await kickUser(creator_id, currentUser.id, currentUser.username, user_id, username ?? "", chat_id);
+                    await refreshChats();
+                }}>Kick</button>:<></>}
             </li>
         );
     }
@@ -315,12 +345,10 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
             <div id="chat-users-header" className={!ifLightMode?"dark-mode":""}>Users in Chat:</div>
             {userDisplay}
             <button id="add-members-btn" className={!ifLightMode?"dark-mode":""} onClick={() => setAddMembersDisplay(true)}>Add members</button>
-            {addMembersDisplay?<AddMembersPopup setAddMembersDisplay={setAddMembersDisplay} userList={userList} currentFriends={currentFriends} chat_id={chat_id} currentUser={currentUser} ifLightMode={ifLightMode}/>:<></>}
+            {addMembersDisplay?<AddMembersPopup setAddMembersDisplay={setAddMembersDisplay} userList={userList} currentFriends={currentFriends} chat_id={chat_id} currentUser={currentUser} ifLightMode={ifLightMode} refreshChats={refreshChats}/>:<></>}
         </ul>
     );
 }
-
-// ========== TODO ==========
 
 
 function DisplayUserDetails ({user_id, username, description, account_created, joined_at, friendsBtns, updated_at, descFriends, setUserDetailsOpen, currentUser, ifLightMode}: DisplayUserDetailsProps) {
@@ -340,7 +368,7 @@ function DisplayUserDetails ({user_id, username, description, account_created, j
     );
 }
 
-function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_id, currentUser, ifLightMode }: AddMembersPopupProps) {
+function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_id, currentUser, ifLightMode, refreshChats }: AddMembersPopupProps & {refreshChats: () => Promise<void>}) {
     const [addedFriends, setAddedFriends] = useState<CurrOutIncFriendsQuery[]>([]);
 
     // Only show friends who are NOT already in the chat
@@ -379,7 +407,10 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
             <button
                 id="add-members-btn"
                 className={!ifLightMode?"dark-mode":""}
-                onClick={() => addMembers(currentUser.username, currentUser.id, addedFriends, chat_id, setAddMembersDisplay)}
+                onClick={async () => {
+                    await addMembers(currentUser.username, currentUser.id, addedFriends, chat_id, setAddMembersDisplay);
+                    await refreshChats();
+                }}
             >
                 Add
             </button>
@@ -408,34 +439,36 @@ function formatDateTimeSmart(isoString: string) {
   // Same day → just date + time (no weekday)
   return date.toLocaleString("en-US", options);
 }
-function addMembers (username: string, user_id: number, addedFriends: CurrOutIncFriendsQuery[], chat_id: number, setAddMembersDisplay: (value: boolean)=> void) {
+async function addMembers (username: string, user_id: number, addedFriends: CurrOutIncFriendsQuery[], chat_id: number, setAddMembersDisplay: (value: boolean)=> void) {
     setAddMembersDisplay(false);
     if (addedFriends.length === 0) {
         console.log("No friends selected");
         return;
     }
-    fetch("/chats/addToChat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({username, user_id, addedFriends, chat_id})
-    }).then(async response => {
+    try {
+        const response = await fetch("/chats/addToChat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({username, user_id, addedFriends, chat_id})
+        });
         const parsed: standardResponse = await response.json();
         console.log(parsed.message);
-    }).catch(err => {
+    } catch (err) {
         console.log(err);
-    })   
+    }
 }
-function kickUser (creator_id: number, user_id: number, user_username: string, kicked_id: number, kicked_username: string, chat_id: number) {
-    fetch("/chats/kick", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({creator_id, user_id, user_username, kicked_id, kicked_username, chat_id})
-    }).then(async response => {
+async function kickUser (creator_id: number, user_id: number, user_username: string, kicked_id: number, kicked_username: string, chat_id: number) {
+    try {
+        const response = await fetch("/chats/kick", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({creator_id, user_id, user_username, kicked_id, kicked_username, chat_id})
+        });
         const parsed: standardResponse = await response.json();
         console.log(parsed.message);
-    }).catch(err => {
+    } catch (err) {
         console.log(err);
-    })
+    }
 }
 function readMessages (chat_id: number, user_id: number) {
     fetch("/message/readMessages", {
@@ -450,29 +483,31 @@ function readMessages (chat_id: number, user_id: number) {
     });
 }
 
-function deleteChat (user_id: number, chat_id: number, creator_id: number) {
-    fetch("/chats/deleteChat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({user_id, chat_id, creator_id})
-    }).then(async response => {
+async function deleteChat (user_id: number, chat_id: number, creator_id: number) {
+    try {
+        const response = await fetch("/chats/deleteChat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({user_id, chat_id, creator_id})
+        });
         const parsed: standardResponse = await response.json();
         console.log(parsed.message);
-    }).catch(err => {
+    } catch (err) {
         console.log(err);
-    })
+    }
 }
-function leaveChat (user_id: number, username: string, chat_id: number, creator_id: number) {
-    fetch("/chats/leaveChat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({user_id, username, chat_id, creator_id})
-    }).then(async response => {
+async function leaveChat (user_id: number, username: string, chat_id: number, creator_id: number) {
+    try {
+        const response = await fetch("/chats/leaveChat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({user_id, username, chat_id, creator_id})
+        });
         const parsed: standardResponse = await response.json();
         console.log(parsed.message);
-    }).catch(err => {
+    } catch (err) {
         console.log(err);
-    })
+    }
 }
 function sendRequest (sender_id: number, receiver_id: number) {
     fetch("/friends/sendFriendRequest", {
@@ -524,7 +559,7 @@ function rejectRequest (friend_id: number, sender_username: string, sender_id: n
     }
 
 
-function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, ifLightMode}: CreateChatsPopupProps) {
+function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, ifLightMode, refreshChats}: CreateChatsPopupProps & {refreshChats: () => Promise<void>}) {
     const [selectedFriends, setSelectedFriends] = useState<CurrOutIncFriendsQuery[]>([]);
     const [chatName, setChatName] = useState("");
     const [displayMsg, setDisplayMsg] = useState("");
@@ -560,17 +595,21 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, 
                 {friendsDisplay}
             </ul>
             <input placeholder="Chat Name" id="get-chat-name" className={!ifLightMode?"dark-mode":""} value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
-            <button id="create-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={() => createChat(currentUser.username, currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg)}>Create Chat</button>
+            <button id="create-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={async () => {
+                await createChat(currentUser.username, currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg);
+                await refreshChats();
+            }}>Create Chat</button>
             <p id="popup-display-msg" className={!ifLightMode?"dark-mode":""}>{displayMsg}</p>
         </div>
     )
 }
-function createChat (creator_username: string, creator_id: number, addedFriends: CurrOutIncFriendsQuery[], chat_name: string, setChatName: (value: string) => void, setSelectedFriends: (value: CurrOutIncFriendsQuery[]) => void, setCreateChatsDisplay: (value: boolean) => void, setDisplayMsg: (value: string) => void) {
-    fetch("/chats/createChat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({creator_username, creator_id, addedFriends, chat_name})
-    }).then(async response => {
+async function createChat (creator_username: string, creator_id: number, addedFriends: CurrOutIncFriendsQuery[], chat_name: string, setChatName: (value: string) => void, setSelectedFriends: (value: CurrOutIncFriendsQuery[]) => void, setCreateChatsDisplay: (value: boolean) => void, setDisplayMsg: (value: string) => void) {
+    try {
+        const response = await fetch("/chats/createChat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({creator_username, creator_id, addedFriends, chat_name})
+        });
         const parsed: standardResponse = await response.json();
         console.log(parsed.message);
         if (!parsed.success) {
@@ -578,9 +617,9 @@ function createChat (creator_username: string, creator_id: number, addedFriends:
         } else {
             setCreateChatsDisplay(false);
         }
-    }).catch(err => {
+    } catch (err) {
         console.log(err);
-    });
+    }
     setChatName("");
     setSelectedFriends([]); // reset inputs
 }
