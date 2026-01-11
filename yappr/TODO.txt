@@ -1,10 +1,6 @@
 (DONE) TO FINISH DEVELOPMENT: 
 
 FUTURE ADDITIONS:
-- gemeni chat bot (select option to talk to ai in chat and will give response through server)
-
-- pipeline on github actions
-
 - add matchmaking (new table to hold users in matchmaking and to assign them into chats)
 
 - add image attachment
