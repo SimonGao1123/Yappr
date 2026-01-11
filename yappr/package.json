@@ -9,9 +9,9 @@
     "start": "tsx backend/server.ts",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "npx vitest",
-    "test:run": "npx vitest run",
-    "test:coverage": "npx vitest run --coverage"
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
