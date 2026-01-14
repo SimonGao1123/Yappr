@@ -21,6 +21,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import messagingRoutes from './routes/messagingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import geminiRoutes from './routes/geminiRoutes.js';
+import randomChatRoutes from './routes/randomChatRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,6 +89,7 @@ app.use('/chats', chatRoutes);
 app.use('/message', messagingRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/gemini', geminiRoutes);
+app.use('/randomChats', randomChatRoutes);
 
 // ---------- Static assets ----------
 app.use(express.static(publicDir, { maxAge: '1y', etag: false }));
