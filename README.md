@@ -1,2 +1,2 @@
-# ChitYapp
+# YappR
 Messaging App with AI
