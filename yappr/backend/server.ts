@@ -22,6 +22,7 @@ import messagingRoutes from './routes/messagingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import geminiRoutes from './routes/geminiRoutes.js';
 import randomChatRoutes from './routes/randomChatRoutes.js';
+import { startChatMatcher } from './jobs/chatMatcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -140,4 +141,5 @@ validatePublicDir();
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
+  startChatMatcher(); // chat matcher runs constantly checks every 5 seconds
 });

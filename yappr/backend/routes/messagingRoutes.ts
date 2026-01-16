@@ -38,6 +38,7 @@ router.post("/sendMessage", async (req: Request<{},{},SendMessageInput>, res: Re
     }
 });
 
+// CAN BE USED TO DELETE RANDOM CHAT MESSAGES
 router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res: Response<standardResponse>) => {
     const {message_id, user_id, sender_id, chat_id} = req.body;
 
@@ -47,7 +48,7 @@ router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res
     try {
         // check if message exists/is already deleted
         const [rows] = await db.execute<SelectIfMessageExists[]>(
-            'SELECT sender_id, chat_id, deleted FROM Messages WHERE message_id=? AND random_chat=FALSE'
+            'SELECT sender_id, chat_id, deleted FROM Messages WHERE message_id=?'
             ,
             [message_id] 
         );

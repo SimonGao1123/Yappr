@@ -17,12 +17,15 @@ router.post("/createChat", async (req: Request<{},{},CreateChatInput>, res: Resp
     if (!chat_name) return res.status(401).json({success: false, message: "Invalid chat name"});
     if (addedFriends.length === 0) return res.status(401).json({success: false, message: "Cannot make a chat by yourself"});
     try {
-        const [results] = await db.execute<ResultSetHeader>(
-            'INSERT INTO Chats (creator_id, chat_name) VALUES (?, ?)',
-            [creator_id, chat_name]
+        const [chatId] = await db.execute<ResultSetHeader> (
+            'INSERT INTO AllChats () VALUES ()'
+        );
+        await db.query(
+            'INSERT INTO Chats (chat_id, creator_id, chat_name) VALUES (?, ?, ?)',
+            [chatId.insertId, creator_id, chat_name]
         );
 
-        const insertedId = results.insertId; // automatically gives primary key value of the inserted value
+        const insertedId = chatId.insertId; // automatically gives primary key value of the inserted value
         // will be the chatId of Chat_Users for each user
 
         await db.execute(
@@ -82,11 +85,17 @@ router.post("/leaveChat", async (req: Request<{},{},LeaveChatInput>, res: Respon
         if (rowsUsersInGroup.length === 1) {
             // only user is left
             await db.execute(
+                'DELETE FROM Messages WHERE chat_id = ?', [chat_id]
+            );
+            await db.execute(
                 'DELETE FROM Chat_Users WHERE chat_id=?', [chat_id]
             );
             await db.execute(
                 'DELETE FROM Chats WHERE chat_id=?', [chat_id]
             );
+            await db.execute(
+                `DELETE FROM AllChats WHERE chat_id=?`, [chat_id]
+            )
     
 
             return res.status(201).json({success: true, message: "Successfully deleted group"});
@@ -136,22 +145,25 @@ router.post("/leaveChat", async (req: Request<{},{},LeaveChatInput>, res: Respon
 // only can be done by creator
 router.post("/deleteChat", async (req: Request<{},{},DeleteChatInput>, res: Response<standardResponse>) => {
     const {user_id, chat_id, creator_id} = req.body; // creator id from chat_data
+
+    const conn = db.getConnection();
     try {
         
         if (user_id !== creator_id) return res.status(401).json({success: false, message: "User is not the creator"});
 
-        await db.execute(
-            'DELETE FROM Chat_Users WHERE chat_id = ?',
-            [chat_id]
-        );
-        await db.execute(
-            'DELETE FROM Chats WHERE chat_id = ?',
-            [chat_id]
-        ); // delete members from chat and delete chat itself
+        (await conn).beginTransaction();
+            (await conn).execute('DELETE FROM Messages WHERE chat_id = ?', [chat_id]);
+            (await conn).execute('DELETE FROM Chat_Users WHERE chat_id = ?', [chat_id]);
+            (await conn).execute('DELETE FROM Chats WHERE chat_id = ?', [chat_id]);
+            (await conn).execute('DELETE FROM AllChats WHERE chat_id = ?', [chat_id]);
+        (await conn).commit();
         return res.status(201).json({success: true, message: "Successfully deleted chat"});
     } catch (err) {
+        (await conn).rollback();
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});
+    } finally {
+        (await conn).release();
     }
 });
 
