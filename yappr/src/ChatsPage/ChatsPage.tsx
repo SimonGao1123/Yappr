@@ -20,7 +20,7 @@ function ChatsPage ({currentUser, currentFriends, ifLightMode, allChats, setAllC
     // Function to refresh chats from the server
     const refreshChats = async () => {
         try {
-            const response = await fetch(`/chats/displayChats/${currentUser.id}`);
+            const response = await fetch(`/api/chats/displayChats/${currentUser.id}`);
             const parsed: GetChatsResponse = await response.json();
             if (parsed.success && parsed.chat_data) {
                 setAllChats(parsed.chat_data);
@@ -251,7 +251,7 @@ function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat
 async function editChatName (setEditingChatName: (value: boolean) => void, newChatName: string, chat_id: number, user_id: number, creator_id: number, username: string) {
     setEditingChatName(false);
     try {
-        const response = await fetch("/chats/editChatName", {
+        const response = await fetch("/api/chats/editChatName", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({newChatName, chat_id, user_id, creator_id, username})
@@ -446,7 +446,7 @@ async function addMembers (username: string, user_id: number, addedFriends: Curr
         return;
     }
     try {
-        const response = await fetch("/chats/addToChat", {
+        const response = await fetch("/api/chats/addToChat", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({username, user_id, addedFriends, chat_id})
@@ -459,7 +459,7 @@ async function addMembers (username: string, user_id: number, addedFriends: Curr
 }
 async function kickUser (creator_id: number, user_id: number, user_username: string, kicked_id: number, kicked_username: string, chat_id: number) {
     try {
-        const response = await fetch("/chats/kick", {
+        const response = await fetch("/api/chats/kick", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({creator_id, user_id, user_username, kicked_id, kicked_username, chat_id})
@@ -471,7 +471,7 @@ async function kickUser (creator_id: number, user_id: number, user_username: str
     }
 }
 function readMessages (chat_id: number, user_id: number) {
-    fetch("/message/readMessages", {
+    fetch("/api/message/readMessages", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({chat_id, user_id})
@@ -485,7 +485,7 @@ function readMessages (chat_id: number, user_id: number) {
 
 async function deleteChat (user_id: number, chat_id: number, creator_id: number) {
     try {
-        const response = await fetch("/chats/deleteChat", {
+        const response = await fetch("/api/chats/deleteChat", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({user_id, chat_id, creator_id})
@@ -498,7 +498,7 @@ async function deleteChat (user_id: number, chat_id: number, creator_id: number)
 }
 async function leaveChat (user_id: number, username: string, chat_id: number, creator_id: number) {
     try {
-        const response = await fetch("/chats/leaveChat", {
+        const response = await fetch("/api/chats/leaveChat", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({user_id, username, chat_id, creator_id})
@@ -510,7 +510,7 @@ async function leaveChat (user_id: number, username: string, chat_id: number, cr
     }
 }
 function sendRequest (sender_id: number, receiver_id: number) {
-    fetch("/friends/sendFriendRequest", {
+    fetch("/api/friends/sendFriendRequest", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({sender_id, receiver_id})
@@ -522,7 +522,7 @@ function sendRequest (sender_id: number, receiver_id: number) {
         });
 }
 function cancelRequest (friend_id: number, receiver_id: string | number, receiver_username: string) {
-        fetch("/friends/cancel", {
+        fetch("/api/friends/cancel", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, receiver_id, receiver_username})
@@ -534,7 +534,7 @@ function cancelRequest (friend_id: number, receiver_id: string | number, receive
         });
 }
 function rejectRequest (friend_id: number, sender_username: string, sender_id: number) {
-        fetch("/friends/reject", {
+        fetch("/api/friends/reject", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
@@ -546,7 +546,7 @@ function rejectRequest (friend_id: number, sender_username: string, sender_id: n
         });
     }
     function acceptRequest (friend_id: number, sender_username: string, sender_id: number) {
-        fetch("/friends/accept", {
+        fetch("/api/friends/accept", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({friend_id, sender_id, sender_username})
@@ -605,7 +605,7 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, 
 }
 async function createChat (creator_username: string, creator_id: number, addedFriends: CurrOutIncFriendsQuery[], chat_name: string, setChatName: (value: string) => void, setSelectedFriends: (value: CurrOutIncFriendsQuery[]) => void, setCreateChatsDisplay: (value: boolean) => void, setDisplayMsg: (value: string) => void) {
     try {
-        const response = await fetch("/chats/createChat", {
+        const response = await fetch("/api/chats/createChat", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({creator_username, creator_id, addedFriends, chat_name})

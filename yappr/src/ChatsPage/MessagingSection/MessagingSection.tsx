@@ -117,7 +117,7 @@ function SendMessageInput ({currentUser, chat_id, ifLightMode, setMessageData}: 
     );
 }
 function promptAI (setMessage:(value: string)=> void, setIfAskAI:(value: boolean)=> void, prompt: string, chat_id: number, user_id: number, username: string, setMessageData: (value: SelectMessagesFromChat[]) => void) {
-    fetch("/gemini/prompt", {
+    fetch("/api/gemini/prompt", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({prompt, chat_id, user_id, username})
@@ -160,7 +160,7 @@ function formatDateTimeSmart(isoString: string): string {
 }
 
 function getPastMessages (user_id: number, setMessageData: (value: SelectMessagesFromChat[])=>void, chat_id: number) {
-    fetch(`/message/getMessages/${user_id}`, {
+    fetch(`/api/message/getMessages/${user_id}`, {
         method: "GET"
     }).then(async response => {
         const parsed: GetMessagesResponse = await response.json();
@@ -182,7 +182,7 @@ function getPastMessages (user_id: number, setMessageData: (value: SelectMessage
 
 }
 function sendMessage (chat_id: number, message: string, user_id: number, setMessage: (value: string) => void, setMessageData: (value: SelectMessagesFromChat[]) => void) {
-    fetch("/message/sendMessage", {
+    fetch("/api/message/sendMessage", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({chat_id, message, user_id})
@@ -198,7 +198,7 @@ function sendMessage (chat_id: number, message: string, user_id: number, setMess
     getPastMessages(user_id, setMessageData, chat_id);
 }
 function deleteMessage (message_id: number, user_id: number, sender_id: number, chat_id: number) {
-    fetch("/message/deleteMessage", {
+    fetch("/api/message/deleteMessage", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({message_id, user_id, sender_id, chat_id})
@@ -211,7 +211,7 @@ function deleteMessage (message_id: number, user_id: number, sender_id: number, 
 }
 // is called automatically when a message is sent in the chat
 function readMessages (chat_id: number, user_id: number) {
-    fetch("/message/readMessages", {
+    fetch("/api/message/readMessages", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({chat_id, user_id})

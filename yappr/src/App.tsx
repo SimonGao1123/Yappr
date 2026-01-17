@@ -53,7 +53,7 @@ function App() {
 
     // runs every time refresh - checks session on mount
     useEffect(() => {
-      fetch("/userLogins/me", {
+      fetch("/api/userLogins/me", {
         method: "GET",
         credentials: "include"
       }).then(async response => {
@@ -87,11 +87,11 @@ function App() {
       try {
         const [ChatData, IncRequests, LightMode, OutRequests, CurrFriends]: [GetChatsResponse, GetIncFriendsResponse, LightModeResponse, GetOutFriendsResponse, GetCurrFriendsResponse]
          = await Promise.all([
-          fetch(`/chats/displayChats/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/settings/ifLightMode/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/currFriends/${currentUser.id}`).then(res => res.json())
+          fetch(`/api/chats/displayChats/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/settings/ifLightMode/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/friends/currFriends/${currentUser.id}`).then(res => res.json())
         ]);
         if (!ChatData.success || !IncRequests.success || !OutRequests.success || !CurrFriends.success) throw new Error("One of the responses was not successful");
         
@@ -103,6 +103,7 @@ function App() {
         setOutFriendReq(OutRequests.outgoingRequests ?? []);
         setCurrentFriends(CurrFriends.currFriends ?? []);
         
+
       } catch (err) {
         console.error("One promise failed: ", err);
       }

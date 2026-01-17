@@ -3,7 +3,7 @@ import type {Request, Response} from 'express';
 import db from '../database.js';
 import mysql from 'mysql2/promise';
 import type { standardResponse } from '../../definitions/globalType.js';
-import { type GetRandomChatWithUser, type GetAvailability, type GetQueueSize, type GetRandomChat, type GetIfInChat } from '../../definitions/randomChatTypes.js';
+import { type GetRandomChatWithUser, type GetAvailability, type GetQueueSize, type GetRandomChat, type GetIfInChat, type GetQueueStatus } from '../../definitions/randomChatTypes.js';
 import type { SelectMessagesFromChat, SendMessageInput } from '../../definitions/messagingTypes.js';
 import type { AllUsersInChatQuery, CheckStatusQuery, UsernameInChatQuery } from '../../definitions/chatsTypes.js';
 import { use } from 'react';
@@ -26,7 +26,7 @@ router.post('/joinQueue', async (req: Request<{},{},{user_id: number}>, res: Res
 });
 
 
-router.get('/getRandomChat/:user_id', async (req: Request<{user_id: number}>, res: Response<any>) => {
+router.get('/getRandomChat/:user_id', async (req: Request<{user_id: number}>, res: Response<GetQueueStatus>) => {
     const user_id = req.params.user_id;
 
     try {
@@ -35,14 +35,14 @@ router.get('/getRandomChat/:user_id', async (req: Request<{user_id: number}>, re
             [user_id]
         );
         if (availability.length == 0) {
-            return res.status(201).json({success: true, message: "Currently Not in Random Chat Queue"});
+            return res.status(201).json({success: true, message: "Currently Not in Random Chat Queue", inChat: false, waiting: false});
         }
         if (availability[0]?.available == 1) {
             // display # of ppl in queue
             const [queueSize] = await db.execute<GetQueueSize[]>(
                 'SELECT COUNT(*) AS available_count FROM RandomChatPool WHERE available=TRUE'
             );
-            return res.status(201).json({success: true, message: "Waiting in Queue...", waiting: true, queueSize: queueSize[0]?.available_count});
+            return res.status(201).json({success: true, message: "Waiting in Queue...", waiting: true, inChat: false, queueSize: queueSize[0]?.available_count});
         }
 
         if (availability[0]?.available == 0) {
@@ -100,18 +100,25 @@ router.get('/getRandomChat/:user_id', async (req: Request<{user_id: number}>, re
                 usersData.push(currentUser);
             }
 
-            const chatData = {chat_id: currChat[0]?.chat_id, created_at: currChat[0]?.created_at, userData: usersData};
+            if (typeof currChat[0]?.chat_id !== "number") {
+                return res.status(404).json({success: false, message: "Chat not found", waiting: false, inChat: false});
+            }
+            const chatData = {chat_id: currChat[0].chat_id, created_at: currChat[0]?.created_at, userData: usersData};
             // chat which user is currently in
             const [messages] = await db.execute<SelectMessagesFromChat[]>(
                 "SELECT m.askGemini, m.message_id, m.sender_id, m.message, u.username, m.sent_at FROM Messages m JOIN Users u ON u.user_id=m.sender_id WHERE m.random_chat=TRUE AND m.chat_id=? AND m.deleted=0 ORDER BY m.message_id ASC LIMIT 100",
-                [currChat[0]?.chat_id]
+                [currChat[0].chat_id]
             );
 
-            return res.status(201).json({success: true, message: "Successfully Obtained Random Chat", waiting: false, chatData: chatData, messages: messages});
+            return res.status(201).json({success: true, message: "Successfully Obtained Random Chat", waiting: false, inChat: true, chatData: chatData, messages: messages});
         }
     } catch (err) {
         console.log(err);
-        return res.status(500).json({success: false, message: "Internal server error"});
+        return res.status(500).json({
+            success: false, message: "Internal server error",
+            inChat: false,
+            waiting: false
+        });
     }
 });
 
