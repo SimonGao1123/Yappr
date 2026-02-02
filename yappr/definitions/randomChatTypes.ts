@@ -60,3 +60,29 @@ export type GetQueueStatus = {
     chatData?: chatData,
     messages?: SelectMessagesFromChat[]
 }
+
+export type RandomChatsPage = {
+    currentUser: {id: number, username: string}
+}
+
+export type JoinQueueScreenProps = {
+    currentUser: {id: number, username: string},
+    setStatus: (value: number)=> void
+}
+
+export type WaitingScreenProps = {
+    currentUser: {username: string, id: number}, 
+    queueSize: number | null, 
+    setStatus: (value: number)=>void, 
+    setCurrChatData: (value: chatData | null) => void, 
+    setMessageData: (value: SelectMessagesFromChat[] | null) => void
+}
+
+export type ChatsDisplayProps = {
+    currentUser: {username: string, id: number}, 
+    chatData: chatData | null,
+    messageData: SelectMessagesFromChat[] | null,
+    setStatus: (value: number)=>void, 
+    setCurrChatData: (value: chatData | null) => void, 
+    setMessageData: (value: SelectMessagesFromChat[] | null) => void
+}

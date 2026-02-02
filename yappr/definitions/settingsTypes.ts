@@ -36,3 +36,4 @@ export type SettingsProps = {
     ifLightMode: boolean, 
     setIfLightMode: (value: boolean)=> void;
 }
+

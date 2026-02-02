@@ -6,6 +6,7 @@ import LoginPage from './LoginPage/LoginPage.js';
 const FriendsPage = lazy(() => import('./FriendsPage/FriendsPage.js'));
 const ChatsPage = lazy(() => import('./ChatsPage/ChatsPage.js'));
 const Settings = lazy(() => import('./SettingsPage/Settings.js'));
+const RandomChats = lazy(() => import('./RandomChatsPage/RandomChatsPage.js'));
 
 import settingsIcon from './images/Gear-icon.png';
 import settingsIconDark from './images/Gear-icon-Dark.png';
@@ -45,6 +46,7 @@ function App() {
     0 = chats page
     1 = friends page
     2 = settings page
+    3 = random chats page
     
     (Only for highlighting tabs)
     */
@@ -144,6 +146,11 @@ function App() {
                 ifLightMode={ifLightMode}
               />
             }/>
+            <Route path="/randomChats" element={
+              <RandomChats
+              currentUser={currentUser}
+              />
+            }/>
             
             <Route path="/settings" element={
               <Settings
@@ -185,6 +192,7 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
       case 0: return 'Chats';
       case 1: return 'Friends';
       case 2: return 'Settings';
+      case 3: return 'RandomYapp'
       default: return 'Menu';
     }
   };
@@ -195,7 +203,9 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
       {/* Desktop Navigation */}
       <nav className="desktop-nav">
         <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
+        <Link to="/randomChats" onClick={() => handleNavClick(3)} className={`nav-btn ${displayIndex===3?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn">RandomYapp</Link>
         <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn">Friends</Link>
+
       </nav>
       
       {/* Mobile Navigation */}
@@ -220,6 +230,12 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
               onClick={() => handleNavClick(0)}
             >
               Chats
+            </Link>
+            <Link to="/randomChats" 
+              className={`dropdown-item ${displayIndex===3?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              onClick={() => handleNavClick(3)}
+            >
+              RandomYapp
             </Link>
             <Link to="/friends" 
               className={`dropdown-item ${displayIndex===1?"active":""} ${!ifLightMode?"dark-mode":""}`} 

@@ -80,17 +80,20 @@ Then replace the session middleware above with the snippet below (and comment/re
 // }));
 -------------------------------------------------------------------------------*/
 
-app.use(helmet());
+// Disable CSP for development to avoid blocking inline scripts (fixes CSP errors)
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false
+}));
 app.use(compression());
 
 // ---------- API routes ----------
-app.use('/userLogins', userLoginRouter);
-app.use('/friends', friendsRouter);
-app.use('/chats', chatRoutes);
-app.use('/message', messagingRoutes);
-app.use('/settings', settingsRoutes);
-app.use('/gemini', geminiRoutes);
-app.use('/randomChats', randomChatRoutes);
+app.use('/api/userLogins', userLoginRouter);
+app.use('/api/friends', friendsRouter);
+app.use('/api/chats', chatRoutes);
+app.use('/api/message', messagingRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/gemini', geminiRoutes);
+app.use('/api/randomChats', randomChatRoutes);
 
 // ---------- Static assets ----------
 app.use(express.static(publicDir, { maxAge: '1y', etag: false }));
