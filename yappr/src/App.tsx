@@ -23,11 +23,12 @@ interface LightModeResponse {
   light_mode?: number;
   message?: string;
 }
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useNavigate } from 'react-router-dom';
 import type { CurrChat, GetChatsResponse } from '../definitions/chatsTypes.js';
 import type { SelectMessagesFromChat } from '../definitions/messagingTypes.js';
 
 function App() {
+  const navigate = useNavigate();
     // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
     const [currentUser, setCurrentUser] = useState<CurrUser | null>(null); // holds username/id of current user
@@ -55,6 +56,9 @@ function App() {
 
     // runs every time refresh - checks session on mount
     useEffect(() => {
+      // Always navigate to chats page on mount/refresh
+      navigate("/");
+      setDisplayIndex(0);
       fetch("/api/userLogins/me", {
         method: "GET",
         credentials: "include"
@@ -69,8 +73,7 @@ function App() {
       }).catch(err => {
         console.log("Error in identifying session", err);
       });
-
-    }, []); // Only run once on mount
+    }, [currentlyLoggingIn]); // Only run once on mount
 
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -114,15 +117,19 @@ function App() {
 
     const MAIN_PAGE = (
       <>
-        <h1 id="title">YappR</h1>
-        <NavBar  
-        setDisplayIndex={setDisplayIndex}
-        displayIndex={displayIndex}
-        ifLightMode={ifLightMode}
-        />
-
+        <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
+          <h1 id="title">YappR</h1>
+          <NavBar  
+            setDisplayIndex={setDisplayIndex}
+            displayIndex={displayIndex}
+            ifLightMode={ifLightMode}
+          />
+          <div style={{flex: 1}}></div>
+          <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
+            <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/>
+          </Link>
+        </div>
         <main style={!ifLightMode?{backgroundColor: "#1e1e1e"}:{}} id="app-main-section">
-          
           {currentUser ?
           <>
           <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
@@ -136,7 +143,6 @@ function App() {
                 setAllChats={setAllChats}
                 />
               }/>
-                
             <Route path="/friends" element={
               <FriendsPage
                 currentFriends={currentFriends}
@@ -149,9 +155,9 @@ function App() {
             <Route path="/randomChats" element={
               <RandomChats
               currentUser={currentUser}
+              ifLightMode={ifLightMode}
               />
             }/>
-            
             <Route path="/settings" element={
               <Settings
                 setCurrentUser={setCurrentUser}
@@ -166,9 +172,7 @@ function App() {
           </Suspense>
           <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div>
           </> : <></>}
-          
         </main>
-        
       </>
     );
 
@@ -181,33 +185,27 @@ function App() {
 }
 function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
   const [menuOpen, setMenuOpen] = useState(false); // for mobile hamburger menu display
-  
   const handleNavClick = (index: number) => {
     setDisplayIndex(index);
     setMenuOpen(false);
   };
-
   const getTabName = () => {
     switch(displayIndex) {
       case 0: return 'Chats';
       case 1: return 'Friends';
       case 2: return 'Settings';
-      case 3: return 'RandomYapp'
+      case 3: return 'RandomYapp';
       default: return 'Menu';
     }
   };
-
   return (
-  <>
-    <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
+    <>
       {/* Desktop Navigation */}
       <nav className="desktop-nav">
-        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
-        <Link to="/randomChats" onClick={() => handleNavClick(3)} className={`nav-btn ${displayIndex===3?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn">RandomYapp</Link>
-        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn">Friends</Link>
-
+        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn nav-fixed ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
+        <Link to="/randomChats" onClick={() => handleNavClick(3)} className={`nav-btn nav-fixed ${displayIndex===3?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-random-btn">RandomYapp</Link>
+        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn nav-fixed ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn-unique">Friends</Link>
       </nav>
-      
       {/* Mobile Navigation */}
       <div className="mobile-nav">
         <button 
@@ -222,7 +220,6 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
           />
           <span className="current-tab-name">{getTabName()}</span>
         </button>
-        
         {menuOpen && (
           <div className={`dropdown-menu ${!ifLightMode?"dark-mode":""}`}>
             <Link to="/"
@@ -252,11 +249,7 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
           </div>
         )}
       </div>
-      
-      <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
-        <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></Link>
-    </div>
-  </>  
+    </>
   );
 }
 

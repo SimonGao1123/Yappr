@@ -1,10 +1,3 @@
-/* ===== Reset box-sizing (helpful) ===== */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
 /* ===== BUTTON BASE (shared) ===== */
 .unfriend-btn, .cancel-req-btn,
 .reject-req-btn, .accept-req-btn {

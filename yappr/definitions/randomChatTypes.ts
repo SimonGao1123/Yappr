@@ -62,12 +62,14 @@ export type GetQueueStatus = {
 }
 
 export type RandomChatsPage = {
-    currentUser: {id: number, username: string}
+    currentUser: {id: number, username: string},
+    ifLightMode: boolean
 }
 
 export type JoinQueueScreenProps = {
     currentUser: {id: number, username: string},
-    setStatus: (value: number)=> void
+    setStatus: (value: number)=> void,
+    ifLightMode: boolean
 }
 
 export type WaitingScreenProps = {
@@ -75,7 +77,8 @@ export type WaitingScreenProps = {
     queueSize: number | null, 
     setStatus: (value: number)=>void, 
     setCurrChatData: (value: chatData | null) => void, 
-    setMessageData: (value: SelectMessagesFromChat[] | null) => void
+    setMessageData: (value: SelectMessagesFromChat[] | null) => void,
+    ifLightMode: boolean
 }
 
 export type ChatsDisplayProps = {
@@ -84,5 +87,40 @@ export type ChatsDisplayProps = {
     messageData: SelectMessagesFromChat[] | null,
     setStatus: (value: number)=>void, 
     setCurrChatData: (value: chatData | null) => void, 
-    setMessageData: (value: SelectMessagesFromChat[] | null) => void
+    setMessageData: (value: SelectMessagesFromChat[] | null) => void,
+    ifLightMode: boolean
+    setQueueSize: (value: number|null)=>void
+}
+
+export type UserDisplayRandomProps = {
+    currentUser: {username: string, id: number}, 
+    userData: userDataType[],
+    ifLightMode: boolean
+}
+export type DisplayUserDetailsRandomProps = {
+    user: userDataType,
+    setUserDetailsOpen: (value: number | null)=> void,
+    currentUser: {username: string, id: number},
+    ifLightMode: boolean,
+    friendBtns: any,
+    descFriends: string
+}
+export type RandomMessageDisplayProps = {
+    currentUser: {username: string, id: number},
+    chat_id: number,
+    ifLightMode: boolean,
+    messageData: SelectMessagesFromChat[] | null
+    setMessageData: (value: SelectMessagesFromChat[] | null) => void, 
+    setCurrChatData: (value: chatData | null) => void,
+    setStatus: (value: number)=> void,
+    setQueueSize: (value: number | null)=> void
+}
+export type SendMessageInputRandom = {
+    currentUser: {username: string, id: number},
+    chat_id: number, 
+    ifLightMode: boolean, 
+    setMessageData: (value: SelectMessagesFromChat[] | null) => void, 
+    setCurrChatData: (value: chatData | null) => void,
+    setStatus: (value: number)=> void,
+    setQueueSize: (value: number | null)=> void
 }

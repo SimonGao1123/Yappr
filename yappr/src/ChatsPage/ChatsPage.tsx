@@ -9,6 +9,8 @@ import updateChatNameIcon from '../images/update-chat-name-icon.png';
 import type { AddMembersPopupProps, ChatLayoutProps, ChatsPageProps, CreateChatsPopupProps, CurrChat, DisplayChatsProps, DisplayUserDetailsProps, GetChatsResponse, UsersLayoutProps } from '../../definitions/chatsTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 import type { CurrOutIncFriendsQuery } from '../../definitions/friendsTypes.js';
+import { acceptRequest, cancelRequest, rejectRequest, sendRequest } from '../data/FriendsFunctions.js';
+import { addMembers, deleteChat, kickUser, leaveChat, readMessages } from '../data/ChatsFunctions.js';
 
 function ChatsPage ({currentUser, currentFriends, ifLightMode, allChats, setAllChats}: ChatsPageProps) {
     // currentFriends holds array of {user_id, username, friend_id}
@@ -439,125 +441,6 @@ function formatDateTimeSmart(isoString: string) {
   // Same day → just date + time (no weekday)
   return date.toLocaleString("en-US", options);
 }
-async function addMembers (username: string, user_id: number, addedFriends: CurrOutIncFriendsQuery[], chat_id: number, setAddMembersDisplay: (value: boolean)=> void) {
-    setAddMembersDisplay(false);
-    if (addedFriends.length === 0) {
-        console.log("No friends selected");
-        return;
-    }
-    try {
-        const response = await fetch("/api/chats/addToChat", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({username, user_id, addedFriends, chat_id})
-        });
-        const parsed: standardResponse = await response.json();
-        console.log(parsed.message);
-    } catch (err) {
-        console.log(err);
-    }
-}
-async function kickUser (creator_id: number, user_id: number, user_username: string, kicked_id: number, kicked_username: string, chat_id: number) {
-    try {
-        const response = await fetch("/api/chats/kick", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({creator_id, user_id, user_username, kicked_id, kicked_username, chat_id})
-        });
-        const parsed: standardResponse = await response.json();
-        console.log(parsed.message);
-    } catch (err) {
-        console.log(err);
-    }
-}
-function readMessages (chat_id: number, user_id: number) {
-    fetch("/api/message/readMessages", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({chat_id, user_id})
-    }).then(async response => {
-        const parsed: standardResponse = await response.json();
-        console.log(parsed.message);
-    }).catch(err => {
-        console.log(err);
-    });
-}
-
-async function deleteChat (user_id: number, chat_id: number, creator_id: number) {
-    try {
-        const response = await fetch("/api/chats/deleteChat", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({user_id, chat_id, creator_id})
-        });
-        const parsed: standardResponse = await response.json();
-        console.log(parsed.message);
-    } catch (err) {
-        console.log(err);
-    }
-}
-async function leaveChat (user_id: number, username: string, chat_id: number, creator_id: number) {
-    try {
-        const response = await fetch("/api/chats/leaveChat", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({user_id, username, chat_id, creator_id})
-        });
-        const parsed: standardResponse = await response.json();
-        console.log(parsed.message);
-    } catch (err) {
-        console.log(err);
-    }
-}
-function sendRequest (sender_id: number, receiver_id: number) {
-    fetch("/api/friends/sendFriendRequest", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({sender_id, receiver_id})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed);
-        }).catch(err => {
-            console.log(err);
-        });
-}
-function cancelRequest (friend_id: number, receiver_id: string | number, receiver_username: string) {
-        fetch("/api/friends/cancel", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, receiver_id, receiver_username})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        });
-}
-function rejectRequest (friend_id: number, sender_username: string, sender_id: number) {
-        fetch("/api/friends/reject", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, sender_id, sender_username})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        });
-    }
-    function acceptRequest (friend_id: number, sender_username: string, sender_id: number) {
-        fetch("/api/friends/accept", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, sender_id, sender_username})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        });
-    }
-
 
 function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, ifLightMode, refreshChats}: CreateChatsPopupProps & {refreshChats: () => Promise<void>}) {
     const [selectedFriends, setSelectedFriends] = useState<CurrOutIncFriendsQuery[]>([]);

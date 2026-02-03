@@ -69,7 +69,10 @@ router.get("/ifLightMode/:user_id", async (req: Request<{user_id: number}>, res:
             'SELECT light_mode FROM Settings WHERE user_id=?',
             [user_id]
         );
-        return res.status(200).json({success: true, message: "obtained mode", light_mode: rows[0]!.light_mode});
+        if (!rows[0] || rows[0].light_mode === undefined) {
+            return res.status(404).json({ success: false, message: "No light mode setting found for user" });
+        }
+        return res.status(200).json({success: true, message: "obtained mode", light_mode: rows[0].light_mode});
     } catch (err) {
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});

@@ -45,6 +45,11 @@ async function createChat() {
         'INSERT INTO RandomChats (chat_id, user_id_1, user_id_2) VALUES (?, ?, ?)',
         [chatId.insertId, u1!.user_id, u2!.user_id]
       );
+      // send beginning message
+      await conn.query(
+        'INSERT INTO Messages (chat_id, sender_id, message, random_chat) VALUES (?, -1, ?, 1)',
+        [chatId.insertId, ]
+      )
 
       // mark both users unavailable
       await conn.query(
