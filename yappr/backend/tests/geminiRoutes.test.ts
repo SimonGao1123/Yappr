@@ -75,7 +75,9 @@ describe('Gemini Routes', () => {
     });
 
     it('should return 401 when user is not in the chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      vi.mocked(db.execute)
+        .mockResolvedValueOnce([[], []] as any) // RandomChats check - not in random chat
+        .mockResolvedValueOnce([[], []] as any); // Chat_Users check - not in regular chat
 
       const response = await request(app)
         .post('/gemini/prompt')
@@ -87,7 +89,9 @@ describe('Gemini Routes', () => {
     });
 
     it('should process prompt successfully when user is in the chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ chat_id: 1, user_id: 1 }], []] as any);
+      vi.mocked(db.execute)
+        .mockResolvedValueOnce([[], []] as any) // RandomChats check - not in random chat
+        .mockResolvedValueOnce([[{ chat_id: 1, user_id: 1 }], []] as any); // Chat_Users check - user is in regular chat
       vi.mocked(db.query)
         .mockResolvedValueOnce([{ insertId: 1 }, []] as any) // Insert user prompt
         .mockResolvedValueOnce([{ insertId: 2 }, []] as any); // Insert Gemini response
