@@ -429,13 +429,17 @@ function formatDateTimeSmart(isoString: string) {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
 
+  // Get user's local timezone
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const options: Intl.DateTimeFormatOptions = {
     month: "2-digit",
     day: "2-digit",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    hour12: true
+    hour12: true,
+    timeZone: userTimeZone
   };
 
   // Same day → just date + time (no weekday)

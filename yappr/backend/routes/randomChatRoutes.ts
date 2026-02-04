@@ -6,7 +6,6 @@ import type { standardResponse } from '../../definitions/globalType.js';
 import { type GetRandomChatWithUser, type GetAvailability, type GetQueueSize, type GetRandomChat, type GetIfInChat, type GetQueueStatus } from '../../definitions/randomChatTypes.js';
 import type { SelectMessagesFromChat, SendMessageInput } from '../../definitions/messagingTypes.js';
 import type { AllUsersInChatQuery, CheckStatusQuery, UsernameInChatQuery } from '../../definitions/chatsTypes.js';
-import { use } from 'react';
 
 const router = express.Router();
 

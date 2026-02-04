@@ -7,7 +7,7 @@
     color: white;
     font-size: 0.8em;
     cursor: pointer;
-    transition: background 140ms ease, transform 120ms ease;
+    transition: background 140ms ease, box-shadow 140ms ease;
 }
 
 /* ACCEPT (GREEN) */
@@ -16,9 +16,11 @@
 }
 .accept-req-btn:hover, #send-req-btn:hover {
     background-color: #4a90e2;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
 .accept-req-btn:active, #send-req-btn:active {
     background-color: #357abd;
+    box-shadow: 0 1px 4px rgba(53, 122, 189, 0.3);
 }
 
 /* REJECT / CANCEL / UNFRIEND (RED) */
@@ -29,10 +31,12 @@
 .unfriend-btn:hover, .cancel-req-btn:hover,
 .reject-req-btn:hover {
     background-color: #a01a50;
+    box-shadow: 0 2px 8px rgba(201, 36, 102, 0.3);
 }
 .unfriend-btn:active, .cancel-req-btn:active,
 .reject-req-btn:active {
     background-color: #75143b;
+    box-shadow: 0 1px 4px rgba(117, 20, 59, 0.3);
 }
 
 /* ===== PAGE GRID =====
@@ -170,6 +174,12 @@
     padding: 12px;
     margin-top: 10px;
     box-shadow: 0 2px 8px rgba(17,24,39,0.04);
+    transition: all 0.2s ease;
+}
+
+.friends-li:hover {
+    box-shadow: 0 4px 12px rgba(17,24,39,0.08);
+    background-color: #fafafa;
 }
 
 /* incoming button container */
@@ -242,6 +252,11 @@
   background-color: #333333;
   color: #f0f0f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.friends-li.dark-mode:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background-color: #3a3a3a;
 }
 
 .unfriend-btn.dark-mode,

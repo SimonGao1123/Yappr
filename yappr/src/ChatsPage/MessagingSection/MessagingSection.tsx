@@ -110,7 +110,7 @@ function SendMessageInput ({currentUser, chat_id, ifLightMode, setMessageData}: 
                 :
                 promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username, setMessageData);
                 }}>Send</button>
-            <div className="gemini-checkbox-wrapper">
+            <div className={`gemini-checkbox-wrapper${!ifLightMode ? ' dark-mode' : ''}`}>
                 <label htmlFor='if-ask-gemini'><img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/> Ask Gemini</label>
                 <input id="if-ask-gemini" className={!ifLightMode?"dark-mode":""} checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
             </div>
@@ -127,17 +127,21 @@ function formatDateTimeSmart(isoString: string): string {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
 
+  // Get user's local timezone
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const options: Intl.DateTimeFormatOptions = {
     month: "2-digit",
     day: "2-digit",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    hour12: true
+    hour12: true,
+    timeZone: userTimeZone
   };
 
   if (isSameDay) {
-    return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: userTimeZone });
   } else {
     return date.toLocaleString("en-US", options);
   }

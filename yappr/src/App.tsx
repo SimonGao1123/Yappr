@@ -156,6 +156,9 @@ function App() {
               <RandomChats
               currentUser={currentUser}
               ifLightMode={ifLightMode}
+              currentFriends={currentFriends}
+              outgoingFriendReq={outgoingFriendReq}
+              incomingFriendReq={incomingFriendReq}
               />
             }/>
             <Route path="/settings" element={

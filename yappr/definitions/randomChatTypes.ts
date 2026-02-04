@@ -1,6 +1,7 @@
 import type { RowDataPacket } from 'mysql2';
 import type { UsernameInChatQuery } from './chatsTypes.js';
 import type { SelectMessagesFromChat } from './messagingTypes.js';
+import type { CurrOutIncFriendsQuery } from './friendsTypes.js';
 export interface QueueUsersPool extends RowDataPacket {
     random_chat_user: number,
     user_id: number,
@@ -63,7 +64,10 @@ export type GetQueueStatus = {
 
 export type RandomChatsPage = {
     currentUser: {id: number, username: string},
-    ifLightMode: boolean
+    ifLightMode: boolean,
+    currentFriends: CurrOutIncFriendsQuery[],
+    outgoingFriendReq: CurrOutIncFriendsQuery[],
+    incomingFriendReq: CurrOutIncFriendsQuery[]
 }
 
 export type JoinQueueScreenProps = {
@@ -88,14 +92,20 @@ export type ChatsDisplayProps = {
     setStatus: (value: number)=>void, 
     setCurrChatData: (value: chatData | null) => void, 
     setMessageData: (value: SelectMessagesFromChat[] | null) => void,
-    ifLightMode: boolean
-    setQueueSize: (value: number|null)=>void
+    ifLightMode: boolean,
+    setQueueSize: (value: number|null)=>void,
+    currentFriends: CurrOutIncFriendsQuery[],
+    outgoingFriendReq: CurrOutIncFriendsQuery[],
+    incomingFriendReq: CurrOutIncFriendsQuery[]
 }
 
 export type UserDisplayRandomProps = {
     currentUser: {username: string, id: number}, 
     userData: userDataType[],
-    ifLightMode: boolean
+    ifLightMode: boolean,
+    currentFriends: CurrOutIncFriendsQuery[],
+    outgoingFriendReq: CurrOutIncFriendsQuery[],
+    incomingFriendReq: CurrOutIncFriendsQuery[]
 }
 export type DisplayUserDetailsRandomProps = {
     user: userDataType,

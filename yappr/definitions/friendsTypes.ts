@@ -22,7 +22,7 @@ export interface FriendRequestQuery extends RowDataPacket {
     sender_id: number,
     receiver_id: number    
 }
-export type AcceptRejectRequestInput = {
+export type AcceptRejectRequestInput = { 
     friend_id: number, 
     sender_username: string, 
     sender_id: number

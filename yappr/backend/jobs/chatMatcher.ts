@@ -26,8 +26,8 @@ async function createChat() {
     // Lock rows so no other matcher can grab them
     const [userPool] = await conn.query<QueueUsersPool[]>(
       `
-      SELECT random_chat_user, user_id
-      FROM RandomChatPool
+      SELECT r.random_chat_user, r.user_id, u.username
+      FROM RandomChatPool r JOIN Users u ON r.user_id = u.user_id
       WHERE available = TRUE
       FOR UPDATE
       `
@@ -36,7 +36,9 @@ async function createChat() {
     for (let i = 0; i + 1 < userPool.length; i += 2) {
       const u1 = userPool[i];
       const u2 = userPool[i + 1];
-
+      if (!u1 || !u2) {
+        continue;
+      }
       // create chat
       const [chatId] = await conn.execute<ResultSetHeader>(
         'INSERT INTO AllChats (if_random) VALUES (TRUE)'
@@ -48,7 +50,7 @@ async function createChat() {
       // send beginning message
       await conn.query(
         'INSERT INTO Messages (chat_id, sender_id, message, random_chat) VALUES (?, -1, ?, 1)',
-        [chatId.insertId, ]
+        [chatId.insertId, `Start of chat with ${u1.username} and ${u2.username}`]
       )
 
       // mark both users unavailable
