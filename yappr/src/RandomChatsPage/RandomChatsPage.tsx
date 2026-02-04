@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import './RandomChatsPage.css';
 import type { GetQueueSize, GetQueueStatus, chatData, RandomChatsPage, SendMessageInputRandom, JoinQueueScreenProps, WaitingScreenProps, ChatsDisplayProps, userDataType, UserDisplayRandomProps, DisplayUserDetailsRandomProps, RandomMessageDisplayProps } from '../../definitions/randomChatTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
@@ -180,16 +180,26 @@ function ChatDisplay({ currentUser, chatData, messageData, setStatus, setCurrCha
 function SendMessageInputRandom ({currentUser, chat_id, ifLightMode, setMessageData, setCurrChatData, setStatus, setQueueSize}: SendMessageInputRandom) {
     const [message, setMessage] = useState("");
     const [ifAskAI, setIfAskAI] = useState(false);
+
+    const handleSend = () => {
+        if (!message.trim()) return;
+        if (!ifAskAI) {
+            sendRandomMessage(chat_id, message, currentUser.id, setMessage, setMessageData, setCurrChatData, setStatus, setQueueSize);
+        } else {
+            promptAIRANDOM(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleSend();
+        }
+    };
+
     return (
         <div id="send-msg-input" className={!ifLightMode?"dark-mode":""}>
-            <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)}/>
-            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
-                !ifAskAI?
-                sendRandomMessage(
-                    chat_id, message, currentUser.id, setMessage, setMessageData, setCurrChatData, setStatus, setQueueSize)
-                :
-                promptAIRANDOM(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username);
-                }}>Send</button>
+            <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}/>
+            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={handleSend}>Send</button>
             <div className={`gemini-checkbox-wrapper${!ifLightMode ? ' dark-mode' : ''}`}>
                 <label htmlFor='if-ask-gemini'><img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/> Ask Gemini</label>
                 <input id="if-ask-gemini" className={!ifLightMode?"dark-mode":""} checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
@@ -207,6 +217,12 @@ function RandomMessageDisplay ({currentUser, chat_id, ifLightMode, messageData, 
         username: string, 
         sent_at: string
     */
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to bottom when messages change
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messageData]);
 
     const messageElements = [];
     console.log(messageData);
@@ -261,6 +277,7 @@ function RandomMessageDisplay ({currentUser, chat_id, ifLightMode, messageData, 
         <>
             <ul id="msg-display" className={!ifLightMode?"dark-mode":""}>
                 {messageElements}
+                <div ref={messagesEndRef} />
             </ul>
             <SendMessageInputRandom
             currentUser={currentUser}

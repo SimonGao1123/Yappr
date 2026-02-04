@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo, useCallback } from 'react'
+import { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react'
 
 import geminiLogo from '../../images/gemini-logo.png';
 import './MessagingSection.css';
@@ -8,6 +8,7 @@ import { deleteMessage, getPastMessages, promptAI, sendMessage } from '../../dat
 
 function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSectionProp) {
     const [pastMessageData, setMessageData] = useState<SelectMessagesFromChat[]>([]);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
             if (!currentUser?.id) return;
@@ -22,10 +23,15 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
     
             return () => clearInterval(intervalId);
         }, [currentUser?.id, chat_id]); // Remove pastMessageData to prevent infinite re-renders
+
+    // Auto-scroll to bottom when messages change
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [pastMessageData]);
         
     return (
         <>
-            <PastMessagesData pastMessageData={pastMessageData} currentUser={currentUser} chat_id={chat_id} ifLightMode={ifLightMode}/>
+            <PastMessagesData pastMessageData={pastMessageData} currentUser={currentUser} chat_id={chat_id} ifLightMode={ifLightMode} messagesEndRef={messagesEndRef}/>
             <SendMessageInput
             currentUser={currentUser}
             chat_id={chat_id}
@@ -37,7 +43,7 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
 }
 
 // cache past messages to prevent re-renders when parent updates
-const PastMessagesData = memo(function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode}: PastMessagesDataProp) {
+const PastMessagesData = memo(function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode, messagesEndRef}: PastMessagesDataProp & { messagesEndRef: React.RefObject<HTMLDivElement | null> }) {
     // display for past messages - memoized to prevent re-renders when parent updates
 
     const messageDisplay = useMemo(() => {
@@ -93,6 +99,7 @@ const PastMessagesData = memo(function PastMessagesData ({pastMessageData, curre
     return (
         <ul id="msg-display" className={!ifLightMode?"dark-mode":""}>
             {messageDisplay}
+            <div ref={messagesEndRef} />
         </ul>
     );
 });
@@ -101,15 +108,25 @@ function SendMessageInput ({currentUser, chat_id, ifLightMode, setMessageData}: 
     const [message, setMessage] = useState("");
     const [ifAskAI, setIfAskAI] = useState(false);
 
+    const handleSend = () => {
+        if (!message.trim()) return;
+        if (!ifAskAI) {
+            sendMessage(chat_id, message, currentUser.id, setMessage, setMessageData);
+        } else {
+            promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username, setMessageData);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleSend();
+        }
+    };
+
     return (
         <div id="send-msg-input" className={!ifLightMode?"dark-mode":""}>
-            <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)}/>
-            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={() => {
-                !ifAskAI?
-                sendMessage(chat_id, message, currentUser.id, setMessage, setMessageData)
-                :
-                promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username, setMessageData);
-                }}>Send</button>
+            <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}/>
+            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={handleSend}>Send</button>
             <div className={`gemini-checkbox-wrapper${!ifLightMode ? ' dark-mode' : ''}`}>
                 <label htmlFor='if-ask-gemini'><img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/> Ask Gemini</label>
                 <input id="if-ask-gemini" className={!ifLightMode?"dark-mode":""} checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
