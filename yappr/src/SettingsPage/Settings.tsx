@@ -4,9 +4,17 @@ import './Settings.css';
 
 import type { UpdateUsernameProp, ThemeToggleProp, AlterDescriptionProps, SettingsProps } from '../../definitions/settingsTypes.ts';
 import type { standardResponse } from '../../definitions/globalType.js';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser, ifLightMode, setIfLightMode}: SettingsProps) {
+    const navigate = useNavigate();
+
+    const handleLogout = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        await logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex);
+        navigate('/');
+    };
+
     return (
         <main id="settings-main" className={!ifLightMode?"dark-mode":""}>
             <UpdateUsername setCurrentUser={setCurrentUser} currentUser={currentUser} ifLightMode={ifLightMode}/>
@@ -14,7 +22,7 @@ function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser
 
             <ThemeToggle ifLightMode={ifLightMode} setIfLightMode={setIfLightMode} currentUser={currentUser}/>
             
-            <Link to="/" onClick={() => logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex)} id="logout-btn" className={!ifLightMode?"dark-mode":""}>Logout</Link>
+            <button onClick={handleLogout} id="logout-btn" className={!ifLightMode?"dark-mode":""}>Logout</button>
         </main>
     );
 }
@@ -95,22 +103,22 @@ function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode
     setIfLightMode(ifLightMode);
 }
 
-function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void) {
-    fetch("/api/api/userLogins/logout", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        credentials: "include"
-        }).then(async response => {
+async function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void) {
+    try {
+        const response = await fetch("/api/api/userLogins/logout", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            credentials: "include"
+        });
         const parsed: standardResponse = await response.json();
         console.log(parsed);
-        }).catch(err => {
+    } catch (err) {
         console.log("Error in logging out of session", err);
-        });
+    }
 
     setCurrentUser(null); // removes data of login user
     setLoginStatus(true); // returns to login page
     setDisplayIndex(0); // next time open automatically goes to chats
-
 }
 
 function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {

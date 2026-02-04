@@ -31,10 +31,12 @@ router.post("/logout", (req: Request, res: Response<standardResponse>) => {
         }
 
         // Clear the session cookie in the browser
+        // Options must match the session cookie configuration
         res.clearCookie("chat.sid", {
+            path: "/",
             httpOnly: true,
-            sameSite: "lax",
-            secure: false
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            secure: process.env.NODE_ENV === 'production'
         });
 
         // Send success response
