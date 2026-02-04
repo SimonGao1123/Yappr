@@ -105,7 +105,7 @@ function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode
 
 async function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void) {
     try {
-        const response = await fetch("/api/api/userLogins/logout", {
+        const response = await fetch("/api/userLogins/logout", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             credentials: "include"
