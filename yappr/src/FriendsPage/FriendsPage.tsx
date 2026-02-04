@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import './FriendsPage.css';
 import type { DisplayCurrentFriendsProps, DisplayIncomingRequestsProps, DisplayOutgoingRequestsProps, FriendsPageProps, SearchUsersProps } from '../../definitions/friendsTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
+import { acceptRequest, cancelRequest, rejectRequest, unfriendFunction } from '../data/FriendsFunctions.js';
 
 function FriendsPage (
     {currentFriends, 
@@ -34,7 +35,7 @@ function SearchUsers ({searchBarInput, setSearchBarInput, currentUser, ifLightMo
 
     function addFriendFunction (e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        fetch("/friends/sendFriendRequest", {
+        fetch("/api/friends/sendFriendRequest", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({sender_id: currentUser.id, receiver_id: searchBarInput})
@@ -64,18 +65,6 @@ function SearchUsers ({searchBarInput, setSearchBarInput, currentUser, ifLightMo
 function DisplayCurrentFriends ({currentFriends, ifLightMode}: DisplayCurrentFriendsProps) {
     const friendsList = [];
 
-    function unfriendFunction (friend_id: number, other_user_username: string) {
-        fetch("/friends/unfriend", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, other_user_username})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        })
-    }
     for (let i = 0; i < currentFriends.length; i++) {
         const friend = currentFriends[i];
         if (!friend) continue;
@@ -98,19 +87,6 @@ function DisplayCurrentFriends ({currentFriends, ifLightMode}: DisplayCurrentFri
 }
 
 function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}: DisplayOutgoingRequestsProps) {
-    
-    function cancelRequest (friend_id: number, receiver_id: number, receiver_username: string) {
-        fetch("/friends/cancel", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, receiver_id, receiver_username})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        });
-    }
 
     const outgoingReq = [];
     for (let i = 0; i < outgoingFriendReq.length; i++) {
@@ -136,31 +112,6 @@ function DisplayOutgoingRequests ({outgoingFriendReq, ifLightMode}: DisplayOutgo
 }
 
 function DisplayIncomingRequests ({incomingFriendReq, ifLightMode}: DisplayIncomingRequestsProps) {
-    
-    function rejectRequest (friend_id: number, sender_username: string, sender_id: number) {
-        fetch("/friends/reject", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, sender_id, sender_username})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        });
-    }
-    function acceptRequest (friend_id: number, sender_username: string, sender_id: number) {
-        fetch("/friends/accept", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({friend_id, sender_id, sender_username})
-        }).then(async response => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        });
-    }
 
     const incomingReq = [];
     for (let i = 0; i < incomingFriendReq.length; i++) {

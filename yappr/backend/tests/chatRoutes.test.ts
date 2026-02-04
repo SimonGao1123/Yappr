@@ -3,7 +3,7 @@ import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
 
-import './setup.js';
+import { mockConnection } from './setup.js';
 import db from '../database.js';
 import chatRouter from '../routes/chatRoutes.js';
 
@@ -67,10 +67,11 @@ describe('Chat Routes', () => {
 
     it('should create chat successfully', async () => {
       vi.mocked(db.execute)
-        .mockResolvedValueOnce([{ insertId: 1 }, []] as any) // INSERT INTO Chats
-        .mockResolvedValueOnce([{}, []] as any) // INSERT creator into Chat_Users
+        .mockResolvedValueOnce([{ insertId: 1 }, []] as any) // INSERT INTO AllChats
         .mockResolvedValueOnce([[{ friend_id: 1 }], []] as any) // Check friendship
-        .mockResolvedValueOnce([{}, []] as any) // INSERT friend into Chat_Users
+        .mockResolvedValueOnce([{}, []] as any); // INSERT friend into Chat_Users
+      vi.mocked(db.query)
+        .mockResolvedValueOnce([{}, []] as any) // INSERT INTO Chats
         .mockResolvedValueOnce([{}, []] as any); // INSERT opening message
 
       const response = await request(app)
@@ -121,8 +122,10 @@ describe('Chat Routes', () => {
     it('should delete group when only user is left', async () => {
       vi.mocked(db.execute)
         .mockResolvedValueOnce([[{ user_id: 1 }], []] as any) // Only user in group
+        .mockResolvedValueOnce([{}, []] as any) // DELETE from Messages
         .mockResolvedValueOnce([{}, []] as any) // DELETE from Chat_Users
-        .mockResolvedValueOnce([{}, []] as any); // DELETE from Chats
+        .mockResolvedValueOnce([{}, []] as any) // DELETE from Chats
+        .mockResolvedValueOnce([{}, []] as any); // DELETE from AllChats
 
       const response = await request(app)
         .post('/chats/leaveChat')
@@ -179,9 +182,9 @@ describe('Chat Routes', () => {
     });
 
     it('should delete chat successfully when user is creator', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([{}, []] as any) // DELETE from Chat_Users
-        .mockResolvedValueOnce([{}, []] as any); // DELETE from Chats
+      mockConnection.beginTransaction.mockResolvedValue(undefined);
+      mockConnection.execute.mockResolvedValue([{}, []] as any);
+      mockConnection.commit.mockResolvedValue(undefined);
 
       const response = await request(app)
         .post('/chats/deleteChat')
@@ -193,7 +196,8 @@ describe('Chat Routes', () => {
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      mockConnection.beginTransaction.mockImplementation(() => { throw new Error('DB Error'); });
+      mockConnection.rollback.mockResolvedValue(undefined);
 
       const response = await request(app)
         .post('/chats/deleteChat')

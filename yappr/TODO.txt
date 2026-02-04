@@ -1,15 +1,15 @@
 (DONE) TO FINISH DEVELOPMENT: 
 
-FUTURE ADDITIONS:
+CURRENT ADDITIONS:
 - add matchmaking (new table to hold users in matchmaking and to assign them into chats)
 
 - add image attachment
 
+===== way later =====  
+
 - allow image profile pictures (need to be added in database)
 
 - make email used for forgot password or 2 step verification
-
-- Mutual friends 
 
 - Remeber me button
 

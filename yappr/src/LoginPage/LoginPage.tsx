@@ -77,7 +77,7 @@ function UserLogin ({loginUserEmail, setLoginUserEmail, loginPassword, setLoginP
     function handleUserLogin (e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
-        fetch("/userLogins/login", {
+        fetch("/api/userLogins/login", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             credentials: "include",
@@ -138,7 +138,7 @@ function UserRegister ({registerUsername, setRegisterUsername, registerPassword,
             return; 
         }
 
-        fetch("/userLogins/register", {
+        fetch("/api/userLogins/register", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({username: registerUsername, password: registerPassword, email: registerEmail})

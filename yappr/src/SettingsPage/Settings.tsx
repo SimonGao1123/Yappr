@@ -33,7 +33,7 @@ function UpdateUsername ({currentUser, ifLightMode, setCurrentUser}: UpdateUsern
     );
 }
 function updateUsernameFunction(currentUser: {username: string, id: number}, user_id: number, newUsername: string, setDisplayMsg: (value: string)=> void, setCurrentUser: (value: {username: string, id: number})=> void) {
-    fetch("/userLogins/updateUsername", {
+    fetch("/api/userLogins/updateUsername", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         credentials: "include",
@@ -82,7 +82,7 @@ function ThemeToggle ({ifLightMode, setIfLightMode, currentUser}: ThemeTogglePro
 }
 
 function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode: boolean, user_id: number) {
-    fetch("/settings/switchLightDarkMode", {
+    fetch("/api/settings/switchLightDarkMode", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ifLightMode, user_id})
@@ -96,7 +96,7 @@ function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode
 }
 
 function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void) {
-    fetch("/userLogins/logout", {
+    fetch("/api/api/userLogins/logout", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         credentials: "include"
@@ -119,7 +119,7 @@ function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {
 
     function updateDescription () {
         if (!currentUser) return;
-        fetch("/settings/setDescription", {
+        fetch("/api/settings/setDescription", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({user_id: currentUser.id, description})
@@ -134,7 +134,7 @@ function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {
 
     function getDescription () {
         if (!currentUser) return;
-        fetch(`/settings/getDescription/${currentUser.id}`, {
+        fetch(`/api/settings/getDescription/${currentUser.id}`, {
             method: "GET"
         }
         ).then(async res => {

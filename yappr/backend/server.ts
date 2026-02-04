@@ -21,6 +21,8 @@ import chatRoutes from './routes/chatRoutes.js';
 import messagingRoutes from './routes/messagingRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import geminiRoutes from './routes/geminiRoutes.js';
+import randomChatRoutes from './routes/randomChatRoutes.js';
+import { startChatMatcher } from './jobs/chatMatcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,16 +80,20 @@ Then replace the session middleware above with the snippet below (and comment/re
 // }));
 -------------------------------------------------------------------------------*/
 
-app.use(helmet());
+// Disable CSP for development to avoid blocking inline scripts (fixes CSP errors)
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false
+}));
 app.use(compression());
 
 // ---------- API routes ----------
-app.use('/userLogins', userLoginRouter);
-app.use('/friends', friendsRouter);
-app.use('/chats', chatRoutes);
-app.use('/message', messagingRoutes);
-app.use('/settings', settingsRoutes);
-app.use('/gemini', geminiRoutes);
+app.use('/api/userLogins', userLoginRouter);
+app.use('/api/friends', friendsRouter);
+app.use('/api/chats', chatRoutes);
+app.use('/api/message', messagingRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/gemini', geminiRoutes);
+app.use('/api/randomChats', randomChatRoutes);
 
 // ---------- Static assets ----------
 app.use(express.static(publicDir, { maxAge: '1y', etag: false }));
@@ -138,4 +144,5 @@ validatePublicDir();
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
+  startChatMatcher(); // chat matcher runs constantly checks every 5 seconds
 });

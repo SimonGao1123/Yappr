@@ -38,6 +38,7 @@ router.post("/sendMessage", async (req: Request<{},{},SendMessageInput>, res: Re
     }
 });
 
+// CAN BE USED TO DELETE RANDOM CHAT MESSAGES
 router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res: Response<standardResponse>) => {
     const {message_id, user_id, sender_id, chat_id} = req.body;
 
@@ -47,7 +48,8 @@ router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res
     try {
         // check if message exists/is already deleted
         const [rows] = await db.execute<SelectIfMessageExists[]>(
-            'SELECT sender_id, chat_id, deleted FROM Messages WHERE message_id=?',
+            'SELECT sender_id, chat_id, deleted FROM Messages WHERE message_id=?'
+            ,
             [message_id] 
         );
 
@@ -88,7 +90,7 @@ router.get("/getMessages/:user_id", async (req: Request<{user_id: number}>, res:
 
             // only saves past 100 messages
             const [rows] = await db.execute<SelectMessagesFromChat[]>(
-                "SELECT m.askGemini, m.message_id, m.sender_id, m.message, u.username, m.sent_at FROM Messages m JOIN Users u ON u.user_id=m.sender_id WHERE m.chat_id=? AND m.deleted=0 ORDER BY m.message_id ASC LIMIT 100",
+                "SELECT m.askGemini, m.message_id, m.sender_id, m.message, u.username, m.sent_at FROM Messages m JOIN Users u ON u.user_id=m.sender_id WHERE m.random_chat=FALSE AND m.chat_id=? AND m.deleted=0 ORDER BY m.message_id ASC LIMIT 100",
                 [chat.chat_id]
             ); // good practice, select username and id at same time
             
@@ -113,7 +115,7 @@ router.post("/readMessages", async (req: Request<{},{},ReadMessagesInput>, res: 
 
         // get most recent message id from the chat
         const [rows] = await db.execute<GetAllMessageId[]>(
-            'SELECT message_id FROM Messages WHERE chat_id=? AND deleted=0 ORDER BY message_id DESC LIMIT 1',
+            'SELECT message_id FROM Messages WHERE chat_id=? AND deleted=0 AND random_chat=FALSE ORDER BY message_id DESC LIMIT 1',
             [chat_id]
         );
 

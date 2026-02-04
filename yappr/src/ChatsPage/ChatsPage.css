@@ -170,7 +170,7 @@
 
 #close-user-details:hover {
     background-color: #da190b;
-    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
 }
 
 #display-user-username {
@@ -271,6 +271,8 @@
     border-radius: 6px;
     padding: 1rem;
     min-height: 0;
+    flex: 1;
+    height: 100%;
 }
 
 .msg-container {
@@ -318,6 +320,7 @@
 
 .delete-msg-btn:hover {
     background-color: #da190b;
+    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
 }
 
 #send-msg-input {

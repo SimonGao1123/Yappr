@@ -6,6 +6,7 @@ import LoginPage from './LoginPage/LoginPage.js';
 const FriendsPage = lazy(() => import('./FriendsPage/FriendsPage.js'));
 const ChatsPage = lazy(() => import('./ChatsPage/ChatsPage.js'));
 const Settings = lazy(() => import('./SettingsPage/Settings.js'));
+const RandomChats = lazy(() => import('./RandomChatsPage/RandomChatsPage.js'));
 
 import settingsIcon from './images/Gear-icon.png';
 import settingsIconDark from './images/Gear-icon-Dark.png';
@@ -22,11 +23,12 @@ interface LightModeResponse {
   light_mode?: number;
   message?: string;
 }
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useNavigate } from 'react-router-dom';
 import type { CurrChat, GetChatsResponse } from '../definitions/chatsTypes.js';
 import type { SelectMessagesFromChat } from '../definitions/messagingTypes.js';
 
 function App() {
+  const navigate = useNavigate();
     // LOGIN PAGE: 
     const [currentlyLoggingIn, setLoginStatus] = useState(true); 
     const [currentUser, setCurrentUser] = useState<CurrUser | null>(null); // holds username/id of current user
@@ -45,6 +47,7 @@ function App() {
     0 = chats page
     1 = friends page
     2 = settings page
+    3 = random chats page
     
     (Only for highlighting tabs)
     */
@@ -53,7 +56,10 @@ function App() {
 
     // runs every time refresh - checks session on mount
     useEffect(() => {
-      fetch("/userLogins/me", {
+      // Always navigate to chats page on mount/refresh
+      navigate("/");
+      setDisplayIndex(0);
+      fetch("/api/userLogins/me", {
         method: "GET",
         credentials: "include"
       }).then(async response => {
@@ -67,8 +73,7 @@ function App() {
       }).catch(err => {
         console.log("Error in identifying session", err);
       });
-
-    }, []); // Only run once on mount
+    }, [currentlyLoggingIn]); // Only run once on mount
 
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -87,11 +92,11 @@ function App() {
       try {
         const [ChatData, IncRequests, LightMode, OutRequests, CurrFriends]: [GetChatsResponse, GetIncFriendsResponse, LightModeResponse, GetOutFriendsResponse, GetCurrFriendsResponse]
          = await Promise.all([
-          fetch(`/chats/displayChats/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/settings/ifLightMode/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/friends/currFriends/${currentUser.id}`).then(res => res.json())
+          fetch(`/api/chats/displayChats/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/settings/ifLightMode/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
+          fetch(`/api/friends/currFriends/${currentUser.id}`).then(res => res.json())
         ]);
         if (!ChatData.success || !IncRequests.success || !OutRequests.success || !CurrFriends.success) throw new Error("One of the responses was not successful");
         
@@ -103,6 +108,7 @@ function App() {
         setOutFriendReq(OutRequests.outgoingRequests ?? []);
         setCurrentFriends(CurrFriends.currFriends ?? []);
         
+
       } catch (err) {
         console.error("One promise failed: ", err);
       }
@@ -111,15 +117,19 @@ function App() {
 
     const MAIN_PAGE = (
       <>
-        <h1 id="title">YappR</h1>
-        <NavBar  
-        setDisplayIndex={setDisplayIndex}
-        displayIndex={displayIndex}
-        ifLightMode={ifLightMode}
-        />
-
+        <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
+          <h1 id="title">YappR</h1>
+          <NavBar  
+            setDisplayIndex={setDisplayIndex}
+            displayIndex={displayIndex}
+            ifLightMode={ifLightMode}
+          />
+          <div style={{flex: 1}}></div>
+          <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
+            <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/>
+          </Link>
+        </div>
         <main style={!ifLightMode?{backgroundColor: "#1e1e1e"}:{}} id="app-main-section">
-          
           {currentUser ?
           <>
           <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
@@ -133,7 +143,6 @@ function App() {
                 setAllChats={setAllChats}
                 />
               }/>
-                
             <Route path="/friends" element={
               <FriendsPage
                 currentFriends={currentFriends}
@@ -143,7 +152,15 @@ function App() {
                 ifLightMode={ifLightMode}
               />
             }/>
-            
+            <Route path="/randomChats" element={
+              <RandomChats
+              currentUser={currentUser}
+              ifLightMode={ifLightMode}
+              currentFriends={currentFriends}
+              outgoingFriendReq={outgoingFriendReq}
+              incomingFriendReq={incomingFriendReq}
+              />
+            }/>
             <Route path="/settings" element={
               <Settings
                 setCurrentUser={setCurrentUser}
@@ -158,9 +175,7 @@ function App() {
           </Suspense>
           <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div>
           </> : <></>}
-          
         </main>
-        
       </>
     );
 
@@ -173,30 +188,27 @@ function App() {
 }
 function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
   const [menuOpen, setMenuOpen] = useState(false); // for mobile hamburger menu display
-  
   const handleNavClick = (index: number) => {
     setDisplayIndex(index);
     setMenuOpen(false);
   };
-
   const getTabName = () => {
     switch(displayIndex) {
       case 0: return 'Chats';
       case 1: return 'Friends';
       case 2: return 'Settings';
+      case 3: return 'RandomYapp';
       default: return 'Menu';
     }
   };
-
   return (
-  <>
-    <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
+    <>
       {/* Desktop Navigation */}
       <nav className="desktop-nav">
-        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
-        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn">Friends</Link>
+        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn nav-fixed ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
+        <Link to="/randomChats" onClick={() => handleNavClick(3)} className={`nav-btn nav-fixed ${displayIndex===3?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-random-btn">RandomYapp</Link>
+        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn nav-fixed ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn-unique">Friends</Link>
       </nav>
-      
       {/* Mobile Navigation */}
       <div className="mobile-nav">
         <button 
@@ -211,7 +223,6 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
           />
           <span className="current-tab-name">{getTabName()}</span>
         </button>
-        
         {menuOpen && (
           <div className={`dropdown-menu ${!ifLightMode?"dark-mode":""}`}>
             <Link to="/"
@@ -219,6 +230,12 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
               onClick={() => handleNavClick(0)}
             >
               Chats
+            </Link>
+            <Link to="/randomChats" 
+              className={`dropdown-item ${displayIndex===3?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              onClick={() => handleNavClick(3)}
+            >
+              RandomYapp
             </Link>
             <Link to="/friends" 
               className={`dropdown-item ${displayIndex===1?"active":""} ${!ifLightMode?"dark-mode":""}`} 
@@ -235,11 +252,7 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
           </div>
         )}
       </div>
-      
-      <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
-        <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/></Link>
-    </div>
-  </>  
+    </>
   );
 }
 

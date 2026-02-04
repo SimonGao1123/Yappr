@@ -300,6 +300,16 @@ label[for='if-ask-gemini'] img {
     justify-content: center;
 }
 
+.gemini-checkbox-wrapper.dark-mode {
+    background-color: #2d3a4a;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.gemini-checkbox-wrapper.dark-mode label {
+    color: #e0e0e0;
+}
+
 #send-msg-input.dark-mode label[for='if-ask-gemini'] {
     color: #f0f0f0;
 }
