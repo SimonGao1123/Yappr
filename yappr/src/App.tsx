@@ -53,6 +53,12 @@ function App() {
     */
 
     const [ifLightMode, setIfLightMode] = useState(true); // true for light mode, false for dark mode
+    const [status, setStatus] = useState(0);
+    // status for random chat
+    // status:
+    // 0 = not in queue 
+    // 1 = in queue waiting
+    // 2 = in chat
 
     // runs every time refresh - checks session on mount
     useEffect(() => {
@@ -84,6 +90,30 @@ function App() {
 
         return () => clearInterval(intervalId);
     }, [currentUser?.id]); // Remove state dependencies to prevent infinite re-renders
+
+    // Handle browser/tab closing for all pages (automatically leave tab)
+    useEffect(() => {
+        if (!currentUser?.id) return;
+
+        const handleBeforeUnload = () => {
+            // This works on ALL pages in your app
+            console.log("Browser/tab closing");
+            
+            // Leave queue if user is in random chat
+            if (status > 0) {
+                // Fix: Use Blob with proper content type for sendBeacon
+                const data = JSON.stringify({user_id: currentUser.id});
+                const blob = new Blob([data], {type: 'application/json'});
+                navigator.sendBeacon('/api/randomChats/leaveQueue', blob);
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [currentUser?.id, status]);
 
 
     // fetches all data from backend in parallel
@@ -159,6 +189,8 @@ function App() {
               currentFriends={currentFriends}
               outgoingFriendReq={outgoingFriendReq}
               incomingFriendReq={incomingFriendReq}
+              status={status}
+              setStatus={setStatus}
               />
             }/>
             <Route path="/settings" element={

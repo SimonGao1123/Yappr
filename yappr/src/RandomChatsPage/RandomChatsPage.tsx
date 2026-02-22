@@ -8,14 +8,7 @@ import type { DisplayUserDetailsProps } from '../../definitions/chatsTypes.js';
 import geminiLogo from '../images/gemini-logo.png';
 import { deleteMessage, promptAI, promptAIRANDOM, sendRandomMessage } from '../data/MessageFunctions.js';
 
-export default function RandomChatsPage ({currentUser, ifLightMode, currentFriends, outgoingFriendReq, incomingFriendReq}: RandomChatsPage) {
-
-    const[status, setStatus] = useState(0);
-    // status:
-    // 0 = not in queue 
-    // 1 = in queue waiting
-    // 2 = in chat
-
+export default function RandomChatsPage ({currentUser, ifLightMode, currentFriends, outgoingFriendReq, incomingFriendReq, status, setStatus}: RandomChatsPage) {
     
     const[chatData, setCurrChatData] = useState<chatData | null>(null);
     const[messageData, setMessageData] = useState<SelectMessagesFromChat[] | null>(null);
@@ -30,12 +23,7 @@ export default function RandomChatsPage ({currentUser, ifLightMode, currentFrien
 
         return () => {
             clearInterval(intervalId);
-            // Leave queue/chat on unmount or user change
-            fetch('/api/randomChats/leaveQueue', {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({user_id: currentUser.id})
-            }).catch(err => console.log(err));
+            
         };
     }, [currentUser?.id]);
     // constantly refresh random chat pool data

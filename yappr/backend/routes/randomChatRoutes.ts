@@ -192,7 +192,9 @@ router.post("/leaveQueue", async (req: Request<{},{},{user_id: number}>, res: Re
     const {user_id} = req.body;
 
     const conn = await db.getConnection();
-
+    if (!user_id) {
+        return res.status(401).json({success: false, message:"No user selected"});
+    }
     try {
         // check if user is even in a queue
         const [queueStatus] = await db.execute<any[]>(

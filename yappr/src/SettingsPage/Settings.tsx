@@ -11,7 +11,7 @@ function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser
 
     const handleLogout = async (e: React.MouseEvent) => {
         e.preventDefault();
-        await logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex);
+        await logOutFunction(setCurrentUser, setLoginStatus, setDisplayIndex, currentUser?.id);
         navigate('/');
     };
 
@@ -103,8 +103,15 @@ function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode
     setIfLightMode(ifLightMode);
 }
 
-async function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void) {
+async function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void, id: number) {
     try {
+        // Leave queue/chat on unmount or user change (when logout button clicked)
+        fetch('/api/randomChats/leaveQueue', {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({user_id: id})
+        }).catch(err => console.log(err));
+
         const response = await fetch("/api/userLogins/logout", {
             method: "POST",
             headers: {"Content-Type": "application/json"},

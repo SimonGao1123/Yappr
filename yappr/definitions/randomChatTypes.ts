@@ -67,7 +67,10 @@ export type RandomChatsPage = {
     ifLightMode: boolean,
     currentFriends: CurrOutIncFriendsQuery[],
     outgoingFriendReq: CurrOutIncFriendsQuery[],
-    incomingFriendReq: CurrOutIncFriendsQuery[]
+    incomingFriendReq: CurrOutIncFriendsQuery[], 
+    status: number,
+    setStatus: (value: number)=> void,
+
 }
 
 export type JoinQueueScreenProps = {
