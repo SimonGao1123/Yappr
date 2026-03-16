@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: './',
   build: {
     outDir: resolve(__dirname, 'backend', 'public'),
     emptyOutDir: true

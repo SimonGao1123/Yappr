@@ -1,0 +1,15 @@
+node_modules
+.git
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+backend/.env
+backend/.env.*
+*.log
+.DS_Store
+backend/public
+coverage
+.vitest
+*.md

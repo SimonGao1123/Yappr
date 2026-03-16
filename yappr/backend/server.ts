@@ -52,7 +52,8 @@ app.use(session({
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24, // 1 day
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // must be string 'none' for cross-site
-    secure: process.env.NODE_ENV === 'production' // requires https and trust proxy
+    // Only require HTTPS when frontend is actually served over HTTPS
+    secure: process.env.NODE_ENV === 'production' && (process.env.FRONTEND_ORIGIN || '').startsWith('https')
   }
 }));
 
@@ -80,9 +81,22 @@ Then replace the session middleware above with the snippet below (and comment/re
 // }));
 -------------------------------------------------------------------------------*/
 
-// Disable CSP for development to avoid blocking inline scripts (fixes CSP errors)
+// Allow inline scripts (Vite/React) - required or CSP blocks the app
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"]
+    }
+  }
 }));
 app.use(compression());
 
