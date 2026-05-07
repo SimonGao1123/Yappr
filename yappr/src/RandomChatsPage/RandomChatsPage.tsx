@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import './RandomChatsPage.css';
+import { socket } from '../socket.js';
 import type { GetQueueSize, GetQueueStatus, chatData, RandomChatsPage, SendMessageInputRandom, JoinQueueScreenProps, WaitingScreenProps, ChatsDisplayProps, userDataType, UserDisplayRandomProps, DisplayUserDetailsRandomProps, RandomMessageDisplayProps } from '../../definitions/randomChatTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 import type {SelectMessagesFromChat, SendMessageInputProp} from '../../definitions/messagingTypes.js'
@@ -23,10 +24,25 @@ export default function RandomChatsPage ({currentUser, ifLightMode, currentFrien
 
         return () => {
             clearInterval(intervalId);
-            
         };
     }, [currentUser?.id]);
-    // constantly refresh random chat pool data
+
+    // Real-time socket updates for random chat messages
+    useEffect(() => {
+        if (status !== 2 || !chatData?.chat_id) return;
+
+        socket.emit('join-chat', chatData.chat_id);
+
+        const handleNewMessage = (msg: SelectMessagesFromChat) => {
+            setMessageData(prev => prev ? [...prev, msg] : [msg]);
+        };
+        socket.on('new-message', handleNewMessage);
+
+        return () => {
+            socket.emit('leave-chat', chatData.chat_id);
+            socket.off('new-message', handleNewMessage);
+        };
+    }, [status, chatData?.chat_id]);
     
     return (
         <>

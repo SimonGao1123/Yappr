@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Yukai\\\\desktop\\\\yappr_project\" -Directory)",
+      "Bash(Select-Object -First 20)",
+      "Bash(Select-Object Name)",
+      "PowerShell(ls \"C:\\\\Users\\\\Yukai\\\\desktop\\\\yappr_project\" | Where-Object { $_.PSIsContainer } | Select-Object Name)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

@@ -5,6 +5,7 @@ import './MessagingSection.css';
 import type { MessagingSectionProp, PastMessagesDataProp, SendMessageInput, SendMessageInputProp, SelectMessagesFromChat, GetMessagesResponse } from '../../../definitions/messagingTypes.js';
 import type { standardResponse } from '../../../definitions/globalType.js';
 import { deleteMessage, getPastMessages, promptAI, sendMessage } from '../../data/MessageFunctions.js';
+import { socket } from '../../socket.js';
 
 function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSectionProp) {
     const [pastMessageData, setMessageData] = useState<SelectMessagesFromChat[]>([]);
@@ -12,17 +13,23 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
     
     useEffect(() => {
             if (!currentUser?.id) return;
-    
-            // initial fetch
+
+            // Initial fetch to load history
             getPastMessages(currentUser.id, setMessageData, chat_id);
 
-            
-            const intervalId = setInterval(() => {
-                getPastMessages(currentUser.id, setMessageData, chat_id);
-            }, 2000);
-    
-            return () => clearInterval(intervalId);
-        }, [currentUser?.id, chat_id]); // Remove pastMessageData to prevent infinite re-renders
+            // Join this chat's socket room for real-time updates
+            socket.emit('join-chat', chat_id);
+
+            const handleNewMessage = (msg: SelectMessagesFromChat) => {
+                setMessageData(prev => [...prev, msg]);
+            };
+            socket.on('new-message', handleNewMessage);
+
+            return () => {
+                socket.emit('leave-chat', chat_id);
+                socket.off('new-message', handleNewMessage);
+            };
+        }, [currentUser?.id, chat_id]);
 
     // Auto-scroll to bottom when messages change
     useEffect(() => {

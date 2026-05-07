@@ -15,10 +15,8 @@ export function promptAI (setMessage:(value: string)=> void, setIfAskAI:(value: 
     });
     setMessage("");
     setIfAskAI(false);
-
-    readMessages(chat_id, user_id)
-    // update messages so it updates immediately
-    getPastMessages(user_id, setMessageData, chat_id);
+    readMessages(chat_id, user_id);
+    // Messages (prompt + AI response) will arrive via socket 'new-message' events
 }
 export function promptAIRANDOM (setMessage:(value: string)=> void, setIfAskAI:(value: boolean)=> void, prompt: string, chat_id: number, user_id: number, username: string) {
     fetch("/api/gemini/prompt", {
@@ -67,9 +65,8 @@ export function sendMessage (chat_id: number, message: string, user_id: number, 
         console.log(err);
     });
     setMessage("");
-
-    readMessages(chat_id, user_id)
-    getPastMessages(user_id, setMessageData, chat_id);
+    readMessages(chat_id, user_id);
+    // Message will arrive via socket 'new-message' event — no need to re-fetch
 }
 export function deleteMessage (message_id: number, user_id: number, sender_id: number, chat_id: number) {
     fetch("/api/message/deleteMessage", {
@@ -109,8 +106,7 @@ export function sendRandomMessage (chat_id: number, message: string, user_id: nu
         console.log(err);
     });
     setMessage("");
-    getQueueStatus(user_id, setStatus, setCurrChatData, setMessageData, setQueueSize);
-
+    // Message will arrive via socket 'new-message' event — no need to re-fetch
 }
 function getQueueStatus (id: number, setStatus: (value: number) => void, setCurrChatData: (value: chatData | null) => void, setMessageData: (value: SelectMessagesFromChat[] | null) => void, setQueueSize: (value: number | null)=>void) {
     fetch(`/api/randomChats/getRandomChat/${id}`)

@@ -1,4 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
+import { socket } from './socket.js'
 
 import './App.css'
 import LoginPage from './LoginPage/LoginPage.js';
@@ -82,14 +83,21 @@ function App() {
     }, [currentlyLoggingIn]); // Only run once on mount
 
     useEffect(() => {
-        if (!currentUser?.id) return;
-          getAllData()
+        if (!currentUser?.id) {
+          socket.disconnect();
+          return;
+        }
+        socket.connect();
+        getAllData();
         const intervalId = setInterval(() => {
-          getAllData()
-        }, 1000);
+          getAllData();
+        }, 5000);
 
-        return () => clearInterval(intervalId);
-    }, [currentUser?.id]); // Remove state dependencies to prevent infinite re-renders
+        return () => {
+          clearInterval(intervalId);
+          socket.disconnect();
+        };
+    }, [currentUser?.id]);
 
     // Handle browser/tab closing for all pages (automatically leave tab)
     useEffect(() => {

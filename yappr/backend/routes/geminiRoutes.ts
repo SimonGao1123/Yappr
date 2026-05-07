@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database.js';
 import type {Request, Response} from 'express';
+import { getIO } from '../socketInstance.js';
 import mysql from 'mysql2/promise';
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -40,12 +41,23 @@ router.post("/prompt", async (req:Request<{},{},PromptGeminiInput>, res:Response
             return res.status(401).json({success: false, message: "User is not in the chat"});
         }
 
-        await db.query(
+        const [promptInsert] = await db.query(
             'INSERT INTO Messages (chat_id, sender_id, message, askGemini, random_chat) VALUES (?, ?, ?, TRUE, ?)',
             [chat_id, user_id, prompt, ifRandChat.length === 0 ? 0 : 1]
         );
+        // Emit the user's prompt message immediately (before AI responds)
+        const promptId = (promptInsert as any).insertId;
+        const [promptRows] = await db.execute<any[]>(
+            `SELECT m.message_id, m.sender_id, m.message,
+                    IFNULL(u.username, 'Gemini') AS username, m.sent_at, m.askGemini
+             FROM Messages m LEFT JOIN Users u ON u.user_id=m.sender_id WHERE m.message_id=?`,
+            [promptId]
+        );
+        if (promptRows.length > 0) {
+            try { getIO().to(`chat:${chat_id}`).emit('new-message', promptRows[0]); } catch {}
+        }
 
-        const model = genAI.getGenerativeModel({model: "gemma-3-4b-it"}); // can switch to better model later
+        const model = genAI.getGenerativeModel({model: "gemma-3-4b-it"});
 
         const systemPrompt = `You are a helpful assistant in a chat application. Provide a quick, concise response to the user's question.
 
@@ -55,17 +67,25 @@ IMPORTANT CONSTRAINTS:
 - Be clear and direct
 - No preamble or extra explanation
 
-User Question: ${prompt}`; // can update prompt for more accurate answers
+User Question: ${prompt}`;
 
         const result = await model.generateContent(systemPrompt);
         const text = result.response.text();
 
-        await db.query(
+        const [aiInsert] = await db.query(
             "INSERT INTO Messages (chat_id, sender_id, message, askGemini, random_chat) VALUES(?,?,?,TRUE, ?)",
             [chat_id, -1, `Gemini Response to ${username}'s prompt: ${text}`, ifRandChat.length === 0 ? 0 : 1]
         );
-
-        // front end check if sender_id is === -1 and if askGemini is true then its gemini response
+        // Emit the Gemini response (sender_id=-1, no matching Users row, username='Gemini')
+        const aiId = (aiInsert as any).insertId;
+        const [aiRows] = await db.execute<any[]>(
+            `SELECT message_id, sender_id, message, 'Gemini' AS username, sent_at, askGemini
+             FROM Messages WHERE message_id=?`,
+            [aiId]
+        );
+        if (aiRows.length > 0) {
+            try { getIO().to(`chat:${chat_id}`).emit('new-message', aiRows[0]); } catch {}
+        }
 
         res.status(200).json({success: true, message: "Prompt successfully processed"});
     } catch(err) {

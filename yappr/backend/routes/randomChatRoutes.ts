@@ -3,6 +3,7 @@ import type {Request, Response} from 'express';
 import db from '../database.js';
 import mysql from 'mysql2/promise';
 import type { standardResponse } from '../../definitions/globalType.js';
+import { getIO } from '../socketInstance.js';
 import { type GetRandomChatWithUser, type GetAvailability, type GetQueueSize, type GetRandomChat, type GetIfInChat, type GetQueueStatus } from '../../definitions/randomChatTypes.js';
 import type { SelectMessagesFromChat, SendMessageInput } from '../../definitions/messagingTypes.js';
 import type { AllUsersInChatQuery, CheckStatusQuery, UsernameInChatQuery } from '../../definitions/chatsTypes.js';
@@ -140,11 +141,24 @@ router.post("/sendMsgRandom", async (req: Request<{},{},SendMessageInput>, res: 
             return res.status(401).json({success: false, message: "Sent to invalid chat"});
         }
 
-        await db.query(
-            `INSERT INTO Messages (chat_id, sender_id, message, random_chat) 
+        const [insertResult] = await db.query(
+            `INSERT INTO Messages (chat_id, sender_id, message, random_chat)
             VALUES (?, ?, ?, TRUE)`,
             [chat_id, user_id, message]
-        )
+        );
+        const insertId = (insertResult as any).insertId;
+
+        const [newMsgRows] = await db.execute<SelectMessagesFromChat[]>(
+            `SELECT m.message_id, m.sender_id, m.message,
+                    IFNULL(u.username, 'Gemini') AS username, m.sent_at, m.askGemini
+             FROM Messages m LEFT JOIN Users u ON u.user_id=m.sender_id
+             WHERE m.message_id=?`,
+            [insertId]
+        );
+        if (newMsgRows.length > 0) {
+            try { getIO().to(`chat:${chat_id}`).emit('new-message', newMsgRows[0]); } catch {}
+        }
+
         return res.status(201).json({success: true, message: "Sent message!"});
     } catch (err) {
         console.log(err);

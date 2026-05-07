@@ -1,5 +1,6 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -10,10 +11,10 @@ import fs from 'fs';
 import session from 'express-session';
 import helmet from 'helmet';
 import compression from 'compression';
+import { Server } from 'socket.io';
 
-// Uncomment and install connect-redis + redis for production session store
-// import connectRedis from 'connect-redis';
-// import { createClient } from 'redis';
+import MySQLStoreFactory from 'express-mysql-session';
+import pool from './database.js';
 
 import userLoginRouter from './routes/userLogin.js';
 import friendsRouter from './routes/friendsRoutes.js';
@@ -23,65 +24,59 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import geminiRoutes from './routes/geminiRoutes.js';
 import randomChatRoutes from './routes/randomChatRoutes.js';
 import { startChatMatcher } from './jobs/chatMatcher.js';
+import { setIO } from './socketInstance.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Public directory is inside the backend folder (where vite builds to)
 const publicDir = path.join(__dirname, 'public');
 const indexPath = path.join(publicDir, 'index.html');
 
 const app = express();
 app.use(express.json());
 
-// If running behind a proxy (Heroku, nginx, Cloud Run, etc.)
 if (process.env.NODE_ENV === 'production') {
-  // MUST be set before session middleware so secure cookies work correctly
   app.set('trust proxy', 1);
 }
 
+// ---------- Session store (MySQL) ----------
+const MySQLStore = MySQLStoreFactory(session as any);
+const sessionStore = new MySQLStore(
+  {
+    clearExpired: true,
+    checkExpirationInterval: 900000,
+    expiration: 86400000,
+    createDatabaseTable: true,
+    schema: {
+      tableName: 'sessions',
+      columnNames: {
+        session_id: 'session_id',
+        expires: 'expires',
+        data: 'data',
+      },
+    },
+  },
+  pool as any
+);
+
 // ---------- Session config ----------
-// NOTE: express's default MemoryStore is not suitable for production.
-// See the commented Redis example below if you want a production-ready store.
-app.use(session({
+const sessionMiddleware = session({
   name: 'chat.sid',
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24, // 1 day
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // must be string 'none' for cross-site
-    // Only require HTTPS when frontend is actually served over HTTPS
-    secure: process.env.NODE_ENV === 'production' && (process.env.FRONTEND_ORIGIN || '').startsWith('https')
-  }
-}));
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  },
+});
 
-/* ---------- Optional Redis session store (recommended for production) ----------
-Uncomment and run:
-  npm install connect-redis redis
+app.use(sessionMiddleware);
 
-Then replace the session middleware above with the snippet below (and comment/remove the default session).
-------------------------------------------------------------------------------
-// const RedisStore = connectRedis(session);
-// const redisClient = createClient({ legacyMode: true, url: process.env.REDIS_URL });
-// redisClient.connect().catch(console.error);
-// app.use(session({
-//   store: new RedisStore({ client: redisClient }),
-//   name: 'chat.sid',
-//   secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
-//   resave: false,
-//   saveUninitialized: false,
-//   cookie: {
-//     httpOnly: true,
-//     maxAge: 1000 * 60 * 60 * 24,
-//     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-//     secure: process.env.NODE_ENV === 'production'
-//   }
-// }));
--------------------------------------------------------------------------------*/
-
-// Allow inline scripts (Vite/React) - required or CSP blocks the app
+// Allow inline scripts (Vite/React) and WebSocket connections
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: false,
@@ -90,7 +85,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:", "http:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "ws:", "wss:"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -112,51 +107,74 @@ app.use('/api/randomChats', randomChatRoutes);
 // ---------- Static assets ----------
 app.use(express.static(publicDir, { maxAge: '1y', etag: false }));
 
-// ---------- SPA fallback middleware (no path-to-regexp patterns) ----------
+// ---------- SPA fallback ----------
 app.use((req: Request, res: Response, next: NextFunction) => {
-  // Only serve index.html for GET requests that weren't handled by static/API routes
   if (req.method !== 'GET') return next();
-
-  // sendFile will call next(err) on failure
   res.sendFile(indexPath, err => {
     if (err) return next(err);
   });
 });
 
-// ---------- Basic error handler ----------
+// ---------- Error handler ----------
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  // Ignore aborted requests (client disconnected) - this is normal behavior
-  if (err.code === 'ECONNABORTED' || err.code === 'ECONNRESET') {
-    return;
-  }
+  if (err.code === 'ECONNABORTED' || err.code === 'ECONNRESET') return;
   console.error('Unhandled error:', err);
   if (!res.headersSent) {
     res.status(err.status || 500).send(err.expose ? err.message : 'Server error');
   }
 });
 
-// ---------- Startup checks & listen ----------
+// ---------- HTTP + Socket.io server ----------
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  // Same-origin serving — no CORS needed
+  cors: { origin: false },
+});
+
+setIO(io);
+
+// Share session middleware with Socket.io so sockets can read req.session
+io.use((socket, next) => {
+  sessionMiddleware(socket.request as Request, {} as Response, next as NextFunction);
+});
+
+io.on('connection', (socket) => {
+  const userId = (socket.request as any).session?.userId;
+  if (!userId) {
+    socket.disconnect();
+    return;
+  }
+  socket.data.userId = userId;
+
+  socket.on('join-chat', (chatId: number) => {
+    socket.join(`chat:${chatId}`);
+  });
+
+  socket.on('leave-chat', (chatId: number) => {
+    socket.leave(`chat:${chatId}`);
+  });
+});
+
+// ---------- Startup ----------
 const PORT = process.env.PORT || 3000;
 
 function validatePublicDir() {
   const exists = fs.existsSync(publicDir);
   const indexExists = fs.existsSync(indexPath);
   if (!exists) {
-    console.error(`ERROR: public folder not found at expected path:\n  ${publicDir}`);
-    console.error('Make sure your frontend build files live in that folder (index.html, assets/...).');
+    console.error(`ERROR: public folder not found at: ${publicDir}`);
   } else if (!indexExists) {
-    console.error(`ERROR: index.html not found at:\n  ${indexPath}`);
-    console.error('If your frontend is not built yet, build it (e.g. npm run build) so index.html is present.');
+    console.error(`ERROR: index.html not found at: ${indexPath}`);
   } else {
     console.log(`Static assets: ${publicDir}`);
     console.log(`index.html found: ${indexPath}`);
   }
-  // keep running even if missing — server will return 404s; this makes the error obvious early
 }
 
 validatePublicDir();
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
-  startChatMatcher(); // chat matcher runs constantly checks every 5 seconds
+  startChatMatcher();
 });
