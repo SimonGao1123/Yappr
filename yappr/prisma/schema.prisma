@@ -49,7 +49,7 @@ model Users {
   received_requests     Friends[]         @relation("FriendsReceiver")
   random_chat_pool      RandomChatPool?
 
-  @@map("users")
+  @@map("Users")
 }
 
 model Friends {
@@ -65,7 +65,7 @@ model Friends {
 
   @@index([sender_id], map: "fk_friends_sender")
   @@index([receiver_id], map: "fk_friends_receiver")
-  @@map("friends")
+  @@map("Friends")
 }
 
 // Allocates every chat_id in the system. Group chats get a matching `chats`
@@ -79,7 +79,7 @@ model AllChats {
   random_chat RandomChats?
   messages    Messages[]
 
-  @@map("allchats")
+  @@map("AllChats")
 }
 
 model Chats {
@@ -94,7 +94,7 @@ model Chats {
   members  Chat_Users[]
 
   @@index([creator_id], map: "fk_chat_creator")
-  @@map("chats")
+  @@map("Chats")
 }
 
 model Chat_Users {
@@ -109,7 +109,7 @@ model Chat_Users {
 
   @@index([chat_id], map: "fk_chat_id")
   @@index([user_id], map: "fk_chat_user_id")
-  @@map("chat_users")
+  @@map("Chat_Users")
 }
 
 model Messages {
@@ -130,7 +130,7 @@ model Messages {
 
   @@index([chat_id], map: "fk_msgs_chat_id")
   @@index([sender_id], map: "fk_sender_id")
-  @@map("messages")
+  @@map("Messages")
 }
 
 model Settings {
@@ -139,7 +139,7 @@ model Settings {
 
   user Users @relation(fields: [user_id], references: [user_id], map: "fk_settings_user_id")
 
-  @@map("settings")
+  @@map("Settings")
 }
 
 // user_id_1/user_id_2 are UNIQUE and reference RandomChatPool.user_id — NOT
@@ -155,7 +155,7 @@ model RandomChats {
   user_1   RandomChatPool @relation("RandomChatUser1", fields: [user_id_1], references: [user_id], map: "fk_random_user_1")
   user_2   RandomChatPool @relation("RandomChatUser2", fields: [user_id_2], references: [user_id], map: "fk_random_user_2")
 
-  @@map("randomchats")
+  @@map("RandomChats")
 }
 
 model RandomChatPool {
@@ -168,7 +168,7 @@ model RandomChatPool {
   chat_as_user_1  RandomChats? @relation("RandomChatUser1")
   chat_as_user_2  RandomChats? @relation("RandomChatUser2")
 
-  @@map("randomchatpool")
+  @@map("RandomChatPool")
 }
 
 // Required shape for @quixo3/prisma-session-store. Replaces the old
@@ -179,5 +179,5 @@ model Session {
   data      String   @db.Text
   expiresAt DateTime
 
-  @@map("session")
+  @@map("Session")
 }
