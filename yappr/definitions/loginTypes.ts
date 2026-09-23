@@ -1,5 +1,3 @@
-import type { RowDataPacket } from 'mysql2';
-
 export type CurrUser = {
     id: number,
     username: string
@@ -12,7 +10,7 @@ export type LoginInput = {
     userOrEmail: string,
     password: string
 }
-export interface CheckValidLogin extends RowDataPacket {
+export interface CheckValidLogin {
     user_id: number,
     username: string,
     password: string
@@ -27,7 +25,7 @@ export type UpdateUsernameInput = {
     user_id: number,
     newUsername: string
 }
-export interface LastUpdatedUsername extends RowDataPacket {
+export interface LastUpdatedUsername {
     last_updated_username: string
 }
 export type UserLoginProps = {

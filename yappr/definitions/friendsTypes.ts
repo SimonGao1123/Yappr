@@ -1,14 +1,12 @@
-import type { RowDataPacket } from 'mysql2';
-
 export type SendRequestInput = {
     sender_id: number,
     receiver_id: string | number
 }
-export interface CheckIfUsernameOrID extends RowDataPacket {
+export interface CheckIfUsernameOrID {
     user_id: number,
     username?: string
 } 
-export interface CurrStatus extends RowDataPacket {
+export interface CurrStatus {
     friend_id: number,
     status: string    
 } 
@@ -17,7 +15,7 @@ export type CancelRequestInput = {
     receiver_id: number, 
     receiver_username: string
 }
-export interface FriendRequestQuery extends RowDataPacket {
+export interface FriendRequestQuery {
     status: string,
     sender_id: number,
     receiver_id: number    
@@ -31,7 +29,7 @@ export type UnfriendInput = {
     friend_id: number, 
     other_user_username: string
 }
-export interface CurrOutIncFriendsQuery extends RowDataPacket {
+export interface CurrOutIncFriendsQuery {
     friend_id: number,
     username: string,
     user_id: number

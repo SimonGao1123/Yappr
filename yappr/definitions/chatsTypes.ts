@@ -1,4 +1,3 @@
-import type { RowDataPacket } from "mysql2"
 import type { CurrOutIncFriendsQuery } from "./friendsTypes.js"
 
 export type CreateChatInput = {
@@ -7,15 +6,15 @@ export type CreateChatInput = {
     addedFriends: CurrOutIncFriendsQuery[], 
     chat_name: string
 }
-export interface GetFriendsId extends RowDataPacket {
+export interface GetFriendsId {
     friend_id: number,
     
 } 
-export interface UsersInGroupQuery extends RowDataPacket {
+export interface UsersInGroupQuery {
     user_id: number,
     
 } 
-export interface NewLeaderUsernameQuery extends RowDataPacket {
+export interface NewLeaderUsernameQuery {
     username: string
     
 } 
@@ -30,10 +29,10 @@ export type DeleteChatInput = {
     chat_id: number, 
     creator_id: number
 }
-export interface ChatIdWithUserQuery extends RowDataPacket {
+export interface ChatIdWithUserQuery {
     chat_id: number    
 } 
-export interface AllUsersInChatQuery extends RowDataPacket {
+export interface AllUsersInChatQuery {
     user_id: number,
     joined_at: string,
     friend_id?: number,
@@ -41,28 +40,29 @@ export interface AllUsersInChatQuery extends RowDataPacket {
     status?: string,
     username?: string,
     account_created?: string,
-    description?: string    
-} 
-export interface UsernameInChatQuery extends RowDataPacket {
+    description?: string | null
+}
+export interface UsernameInChatQuery {
     username: string,
     joined_at: string,
-    description: string
-} 
-export interface CheckStatusQuery extends RowDataPacket {
+    // Users.description is a nullable TEXT column; null reaches the client.
+    description: string | null
+}
+export interface CheckStatusQuery {
     status: string, 
     sender_id: number, 
     receiver_id: number, 
     friend_id: number, 
     updated_at: string
 } 
-export interface RowChatDataQuery extends RowDataPacket {
+export interface RowChatDataQuery {
     creator_id: number,
     chat_name: string
 }
-export interface MostUpToDateMessageQuery extends RowDataPacket {
+export interface MostUpToDateMessageQuery {
     message_id: number
 }
-export interface LastSeenMessageQuery extends RowDataPacket {
+export interface LastSeenMessageQuery {
     last_seen_message_id: number
 }
 export type AddToChatInput = {
@@ -71,13 +71,13 @@ export type AddToChatInput = {
     addedFriends: CurrOutIncFriendsQuery[], 
     chat_id: number
 }
-export interface CurrUsersQuery extends RowDataPacket {
+export interface CurrUsersQuery {
     user_id: number
 } 
-export interface CheckExistingFriendshipQuery extends RowDataPacket {
+export interface CheckExistingFriendshipQuery {
     friend_id: number
 } 
-export interface CheckExistingMemberShipQuery extends RowDataPacket {
+export interface CheckExistingMemberShipQuery {
     chat_user_id: number
 } 
 export type AddToChatResponse = | {

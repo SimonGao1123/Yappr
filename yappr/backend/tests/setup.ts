@@ -1,34 +1,22 @@
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
+import { mockReset, type DeepMockProxy } from 'vitest-mock-extended';
+import type { PrismaClient } from '../generated/prisma/index.js';
 
-// Mock connection for transactions
-const mockConnection = {
-  execute: vi.fn(),
-  query: vi.fn(),
-  beginTransaction: vi.fn(),
-  commit: vi.fn(),
-  rollback: vi.fn(),
-  release: vi.fn(),
-};
+// vi.mock is hoisted, so the mock instance has to be created inside the factory
+// and read back afterwards — referencing an outer const here hits a TDZ error.
+vi.mock('../prisma.js', async () => {
+  const { mockDeep } = await import('vitest-mock-extended');
+  return { default: mockDeep<PrismaClient>() };
+});
 
-// Mock the database module
-vi.mock('../database.js', () => ({
-  default: {
-    execute: vi.fn(),
-    query: vi.fn(),
-    getConnection: vi.fn(() => Promise.resolve(mockConnection)),
-  }
-}));
+const prismaModule = await import('../prisma.js');
+export const prismaMock = prismaModule.default as unknown as DeepMockProxy<PrismaClient>;
 
-export { mockConnection };
-// Mock session
-export const mockSession = {
-  userId: undefined as number | undefined,
-  username: undefined as string | undefined,
-  destroy: vi.fn((cb) => cb()),
-};
+beforeEach(() => {
+  mockReset(prismaMock);
 
-export const resetMocks = () => {
-  mockSession.userId = undefined;
-  mockSession.username = undefined;
-  vi.clearAllMocks();
-};
+  // $transaction takes either an array of operations or an interactive callback.
+  (prismaMock.$transaction as any).mockImplementation((arg: any) =>
+    typeof arg === 'function' ? arg(prismaMock) : Promise.all(arg)
+  );
+});

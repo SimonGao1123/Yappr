@@ -1,11 +1,11 @@
 import express from 'express';
 import type {Request, Response} from 'express';
-import db from '../database.js';
+import prisma from '../prisma.js';
+import { Prisma } from '../generated/prisma/index.js';
 import crypto from 'crypto';
-import mysql from 'mysql2/promise';
 const router = express.Router();
 
-import type { MeResponse, LoginInput, CheckValidLogin, RegisterInput, UpdateUsernameInput, LastUpdatedUsername } from '../../definitions/loginTypes.js';
+import type { MeResponse, LoginInput, RegisterInput, UpdateUsernameInput } from '../../definitions/loginTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 
 router.get("/me", (req: Request, res: Response<MeResponse>) => {
@@ -50,17 +50,16 @@ router.post("/login", async (req: Request<{},{},LoginInput>, res: Response<stand
     if (!userOrEmail || !password) return res.status(401).json({message: `Invalid Username/Password`, success: false});
 
     try {
-        
-        const [rows] = await db.execute<CheckValidLogin[]>(
-            "SELECT user_id, username, password FROM Users WHERE username = ? OR email=?",
-            [userOrEmail, userOrEmail]
-        ); // selects all users with matched username or email
 
-        if (rows.length === 0) {
+        const user = await prisma.users.findFirst({
+            where: {OR: [{username: userOrEmail}, {email: userOrEmail}]},
+            select: {user_id: true, username: true, password: true}
+        }); // selects the first user with matched username or email
+
+        if (!user) {
             return res.status(401).json({message: "Username or Email doesn't exist", success: false});
         }
 
-        const user = rows[0]!;
         if (user.user_id === -1) {
             return res.status(401).json({message: `Invalid Username/Password`, success: false});
             // accidentally logged into server account (NOT)
@@ -78,6 +77,7 @@ router.post("/login", async (req: Request<{},{},LoginInput>, res: Response<stand
         }
     } catch (error) {
         console.log("Error occurred: ", error);
+        return res.status(500).json({message: "Internal server error", success: false});
     }
 });
 
@@ -88,33 +88,33 @@ router.post("/register", async (req: Request<{},{},RegisterInput>, res: Response
 
     try {
         const encryptedPass = encryptPassword(password);
-        const [result] = await db.query(
-            'INSERT INTO Users (username, password, email) VALUES (?, ?, ?)',
-            [username, encryptedPass, email]
-        ) as [mysql.ResultSetHeader, mysql.FieldPacket[]];
-        
-        await db.query(
-            'INSERT INTO Settings (user_id) VALUES (?)',
-            [result.insertId]
-        );
-        return res.status(201).json({message: `Successfully registered ${username}`, success: true});
-        
-    } catch(error: any) {
-        if (error.code === "ER_DUP_ENTRY") {
-            if (error.sqlMessage.includes("users.username")) {
-                return res.status(409).json({message: "Username already exists", success: false}); 
-
+        // Nested create so a user can never be left without a settings row.
+        await prisma.users.create({
+            data: {
+                username,
+                password: encryptedPass,
+                email,
+                settings: {create: {}}
             }
-            else if (error.sqlMessage.includes("users.email")) {
-                return res.status(409).json({message: "Email already exists", success: false}); 
+        });
+        return res.status(201).json({message: `Successfully registered ${username}`, success: true});
 
+    } catch(error: unknown) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+            // meta.target is the violated index name (uniq_username / uniq_email).
+            const target = String(error.meta?.target ?? "").toLowerCase();
+            if (target.includes("username")) {
+                return res.status(409).json({message: "Username already exists", success: false});
+            }
+            else if (target.includes("email")) {
+                return res.status(409).json({message: "Email already exists", success: false});
             }
             else {
-                return res.status(409).json({message: "Username/Email already exists", success: false}); 
-
+                return res.status(409).json({message: "Username/Email already exists", success: false});
             }
         }
         console.log("Error in registration: ", error);
+        return res.status(500).json({message: "Internal server error", success: false});
     }
 });
 
@@ -131,22 +131,21 @@ router.post("/updateUsername", async (req: Request<{},{},UpdateUsernameInput>, r
 
     }
     try {
-        const [rows] = await db.execute<LastUpdatedUsername[]>(
-            'SELECT last_updated_username FROM Users WHERE user_id=?',
-            [user_id]
-        );
-        if (rows.length === 0) {
+        const userRow = await prisma.users.findUnique({
+            where: {user_id},
+            select: {last_updated_username: true}
+        });
+        if (!userRow) {
             return res.status(401).json({success: false, message: "Invalid user"});
         }
-        const userRow = rows[0]!;
         if (!isTwoWeeksOrOlder(userRow.last_updated_username)) {
             return res.status(401).json({success: false, message: `Can only change username every 2 weeks, last updated: ${formatDateTimeSmart(userRow.last_updated_username)}`});
         }
-        
-        await db.query(
-            'UPDATE Users SET last_updated_username=CURRENT_TIMESTAMP, username=? WHERE user_id=?',
-            [newUsername, user_id]
-        );
+
+        await prisma.users.update({
+            where: {user_id},
+            data: {last_updated_username: new Date(), username: newUsername}
+        });
         req.session.username = newUsername;
         req.session.save(err => {
             if (err) {
@@ -162,8 +161,8 @@ router.post("/updateUsername", async (req: Request<{},{},UpdateUsernameInput>, r
         });
     });
         
-    } catch (error: any) {
-        if (error.code === "ER_DUP_ENTRY") {
+    } catch (error: unknown) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
             return res.status(401).json({success: false, message: "Username already exists"});
         }
         console.log("Error occurred: ", error);
@@ -171,7 +170,7 @@ router.post("/updateUsername", async (req: Request<{},{},UpdateUsernameInput>, r
     }
 });
 
-function isTwoWeeksOrOlder(lastUpdatedDate: string): boolean {
+function isTwoWeeksOrOlder(lastUpdatedDate: Date): boolean {
   if (!lastUpdatedDate) return false;
 
   // Convert MySQL timestamp to JS Date
@@ -188,7 +187,7 @@ function isTwoWeeksOrOlder(lastUpdatedDate: string): boolean {
   return (now.getTime() - updatedDate.getTime()) >= TWO_WEEKS_MS;
 }
 
-function formatDateTimeSmart(isoString: string): string {
+function formatDateTimeSmart(isoString: Date): string {
   const date = new Date(isoString);
   const now = new Date();
 

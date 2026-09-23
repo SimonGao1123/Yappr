@@ -1,12 +1,11 @@
 import express from 'express';
 import type {Request, Response} from 'express';
-import db from '../database.js';
-import mysql from 'mysql2/promise';
+import prisma from '../prisma.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 import { getIO } from '../socketInstance.js';
-import { type GetRandomChatWithUser, type GetAvailability, type GetQueueSize, type GetRandomChat, type GetIfInChat, type GetQueueStatus } from '../../definitions/randomChatTypes.js';
-import type { SelectMessagesFromChat, SendMessageInput } from '../../definitions/messagingTypes.js';
-import type { AllUsersInChatQuery, CheckStatusQuery, UsernameInChatQuery } from '../../definitions/chatsTypes.js';
+import { messageSelect, toMessagePayload, toSocketPayload } from '../messagePayload.js';
+import { type GetQueueStatus } from '../../definitions/randomChatTypes.js';
+import type { SendMessageInput } from '../../definitions/messagingTypes.js';
 
 const router = express.Router();
 
@@ -14,9 +13,7 @@ router.post('/joinQueue', async (req: Request<{},{},{user_id: number}>, res: Res
     // will add the user to the queue
     const {user_id} = req.body;
     try {
-        await db.query('INSERT INTO RandomChatPool (user_id) VALUES (?)',
-            [user_id]
-        );
+        await prisma.randomChatPool.create({data: {user_id}});
         return res.status(201).json({success: true, message: "successfully joined queue"});
     } catch (err) {
         console.log(err);
@@ -26,32 +23,34 @@ router.post('/joinQueue', async (req: Request<{},{},{user_id: number}>, res: Res
 });
 
 
-router.get('/getRandomChat/:user_id', async (req: Request<{user_id: number}>, res: Response<GetQueueStatus>) => {
-    const user_id = req.params.user_id;
+router.get('/getRandomChat/:user_id', async (req: Request<{user_id: string}>, res: Response<GetQueueStatus>) => {
+    const user_id = Number(req.params.user_id);
 
     try {
-        const [availability] = await db.execute<GetAvailability[]>(
-            'SELECT available FROM RandomChatPool WHERE user_id=?',
-            [user_id]
-        );
-        if (availability.length == 0) {
+        const availability = Number.isInteger(user_id)
+            ? await prisma.randomChatPool.findFirst({
+                where: {user_id},
+                select: {available: true}
+              })
+            : null;
+        if (!availability) {
             return res.status(201).json({success: true, message: "Currently Not in Random Chat Queue", inChat: false, waiting: false});
         }
-        if (availability[0]?.available == 1) {
+        if (availability.available === 1) {
             // display # of ppl in queue
-            const [queueSize] = await db.execute<GetQueueSize[]>(
-                'SELECT COUNT(*) AS available_count FROM RandomChatPool WHERE available=TRUE'
-            );
-            return res.status(201).json({success: true, message: "Waiting in Queue...", waiting: true, inChat: false, queueSize: queueSize[0]?.available_count});
+            const available_count = await prisma.randomChatPool.count({
+                where: {available: 1}
+            });
+            return res.status(201).json({success: true, message: "Waiting in Queue...", waiting: true, inChat: false, queueSize: available_count});
         }
 
-        if (availability[0]?.available == 0) {
+        if (availability.available === 0) {
             // that means just added to a chat
-            const [currChat] = await db.execute<GetRandomChat[]>(
-                'SELECT created_at, chat_id, user_id_1, user_id_2 FROM RandomChats WHERE user_id_1=? OR user_id_2=?',
-                [user_id, user_id]
-            ); 
-            const allUsers = [currChat[0]?.user_id_1, currChat[0]?.user_id_2];
+            const currChat = await prisma.randomChats.findFirst({
+                where: {OR: [{user_id_1: user_id}, {user_id_2: user_id}]},
+                select: {created_at: true, chat_id: true, user_id_1: true, user_id_2: true}
+            });
+            const allUsers = [currChat?.user_id_1, currChat?.user_id_2];
 
             // stores user data for user_id_1 and user_id_2
             // user_id, friend_id, updated_at, status, username, account_created, description
@@ -59,58 +58,63 @@ router.get('/getRandomChat/:user_id', async (req: Request<{user_id: number}>, re
             for (let i = 0; i < allUsers.length; i++) {
                 const currentUserId = allUsers[i];
                 if (currentUserId === undefined) continue;
-                
-                const [currUserData] = await db.execute<UsernameInChatQuery[]>(
-                    `
-                    SELECT username, description, joined_at FROM Users WHERE user_id=? 
-                    `, [allUsers[i]]
-                );
+
+                const currUserData = await prisma.users.findUnique({
+                    where: {user_id: currentUserId},
+                    select: {username: true, description: true, joined_at: true}
+                });
 
                 let status="none";
                 let friend_id: number | undefined = undefined;
                 let updated_at: string | undefined = undefined;
-                const [checkFriendStatus] = await db.execute<CheckStatusQuery[]>(
-                    `SELECT status, sender_id, receiver_id, friend_id, updated_at FROM Friends WHERE 
-                    (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)`,
-                    [user_id, allUsers[i], allUsers[i], user_id]  
-                );
+                const row = await prisma.friends.findFirst({
+                    where: {OR: [
+                        {sender_id: user_id, receiver_id: currentUserId},
+                        {sender_id: currentUserId, receiver_id: user_id}
+                    ]},
+                    select: {status: true, sender_id: true, receiver_id: true, friend_id: true, updated_at: true}
+                });
 
-                if (user_id !== allUsers[i] && checkFriendStatus.length > 0) {
-                    const row = checkFriendStatus[0];
-                    friend_id = row?.friend_id;
-                    updated_at = row?.updated_at;
-                    
+                if (user_id !== currentUserId && row) {
+                    friend_id = row.friend_id;
+                    updated_at = row.updated_at.toISOString();
+
+                    // NOTE: these branches test the local `status` (always "none")
+                    // rather than row.status, so status never resolves here. That
+                    // is pre-existing behaviour, preserved deliberately.
                     if (status==="accepted") {
                         status="friends";
-                    } else if (status==="pending" && row?.sender_id===user_id && row?.receiver_id===currentUserId) {
+                    } else if (status==="pending" && row.sender_id===user_id && row.receiver_id===currentUserId) {
                         status="outgoing";
-                    } else if (status==="pending" && row?.sender_id===currentUserId && row?.receiver_id===user_id) {
+                    } else if (status==="pending" && row.sender_id===currentUserId && row.receiver_id===user_id) {
                         status="incoming";
                     }
-                } 
+                }
                 const currentUser = {
                     user_id: currentUserId,
                     friend_id: friend_id,
                     updated_at: updated_at,
                     status: status,
-                    username: currUserData[0]!.username,
-                    account_created: currUserData[0]!.joined_at,
-                    description: currUserData[0]!.description
+                    username: currUserData!.username,
+                    account_created: currUserData!.joined_at.toISOString(),
+                    description: currUserData!.description
                 };
                 usersData.push(currentUser);
             }
 
-            if (typeof currChat[0]?.chat_id !== "number") {
+            if (typeof currChat?.chat_id !== "number") {
                 return res.status(404).json({success: false, message: "Chat not found", waiting: false, inChat: false});
             }
-            const chatData = {chat_id: currChat[0].chat_id, created_at: currChat[0]?.created_at, userData: usersData};
+            const chatData = {chat_id: currChat.chat_id, created_at: currChat.created_at.toISOString(), userData: usersData};
             // chat which user is currently in
-            const [messages] = await db.execute<SelectMessagesFromChat[]>(
-                "SELECT m.askGemini, m.message_id, m.sender_id, m.message, u.username, m.sent_at FROM Messages m JOIN Users u ON u.user_id=m.sender_id WHERE m.random_chat=TRUE AND m.chat_id=? AND m.deleted=0 ORDER BY m.message_id ASC LIMIT 100",
-                [currChat[0].chat_id]
-            );
+            const messageRows = await prisma.messages.findMany({
+                where: {random_chat: 1, chat_id: currChat.chat_id, deleted: 0},
+                select: messageSelect,
+                orderBy: {message_id: 'asc'},
+                take: 100
+            });
 
-            return res.status(201).json({success: true, message: "Successfully Obtained Random Chat", waiting: false, inChat: true, chatData: chatData, messages: messages});
+            return res.status(201).json({success: true, message: "Successfully Obtained Random Chat", waiting: false, inChat: true, chatData: chatData, messages: messageRows.map(toMessagePayload)});
         }
     } catch (err) {
         console.log(err);
@@ -130,34 +134,22 @@ router.post("/sendMsgRandom", async (req: Request<{},{},SendMessageInput>, res: 
     }
     try {
         // check if user is in the random chat
-        const [chat] = await db.execute<GetRandomChatWithUser[]>(
-            `SELECT * FROM RandomChats WHERE user_id_1=? OR user_id_2=?`,
-            [user_id, user_id]
-        );
-        if (chat.length == 0) {
+        const chat = await prisma.randomChats.findFirst({
+            where: {OR: [{user_id_1: user_id}, {user_id_2: user_id}]}
+        });
+        if (!chat) {
             return res.status(401).json({success: false, message: "user is not in a random chat"});
         }
-        if (chat_id !== chat[0]?.chat_id) {
+        if (chat_id !== chat.chat_id) {
             return res.status(401).json({success: false, message: "Sent to invalid chat"});
         }
 
-        const [insertResult] = await db.query(
-            `INSERT INTO Messages (chat_id, sender_id, message, random_chat)
-            VALUES (?, ?, ?, TRUE)`,
-            [chat_id, user_id, message]
-        );
-        const insertId = (insertResult as any).insertId;
+        const created = await prisma.messages.create({
+            data: {chat_id, sender_id: user_id, message, random_chat: 1},
+            select: messageSelect
+        });
 
-        const [newMsgRows] = await db.execute<SelectMessagesFromChat[]>(
-            `SELECT m.message_id, m.sender_id, m.message,
-                    IFNULL(u.username, 'Gemini') AS username, m.sent_at, m.askGemini
-             FROM Messages m LEFT JOIN Users u ON u.user_id=m.sender_id
-             WHERE m.message_id=?`,
-            [insertId]
-        );
-        if (newMsgRows.length > 0) {
-            try { getIO().to(`chat:${chat_id}`).emit('new-message', newMsgRows[0]); } catch {}
-        }
+        try { getIO().to(`chat:${chat_id}`).emit('new-message', toSocketPayload(created)); } catch {}
 
         return res.status(201).json({success: true, message: "Sent message!"});
     } catch (err) {
@@ -171,96 +163,90 @@ router.post("/leaveRandomChat", async (req: Request<{},{},{chat_id: number, user
     if (user_id === other_user_id) {
         return res.status(401).json({success: false, message: "cannot provide 2 of the same users"});
     }
-    const conn = await db.getConnection();
     try {
         // check if user is in chat
-        const [checkInChat] = await db.execute<GetIfInChat[]>(
-            `SELECT chat_id FROM RandomChats WHERE user_id_1=? OR user_id_2=?`,
-            [user_id, user_id]
-        );
-        if (checkInChat.length == 0) {
+        const checkInChat = await prisma.randomChats.findFirst({
+            where: {OR: [{user_id_1: user_id}, {user_id_2: user_id}]},
+            select: {chat_id: true}
+        });
+        if (!checkInChat) {
             return res.status(401).json({success: false, message: "user currently isn't in a chat"});
         }
-        if (checkInChat[0]?.chat_id !== chat_id) {
+        if (checkInChat.chat_id !== chat_id) {
             return res.status(401).json({success: false, message: "Invalid chat error"});
         }
-        conn.beginTransaction();
-        conn.execute('DELETE FROM Messages WHERE chat_id = ?', [chat_id]);
-        conn.execute('DELETE FROM RandomChats WHERE chat_id = ?', [chat_id]);
-        conn.execute('DELETE FROM AllChats WHERE chat_id = ?', [chat_id]);
-        conn.execute('UPDATE RandomChatPool SET available=TRUE WHERE user_id=? OR user_id=?', [user_id, other_user_id]);
-        // set both users to available again
-        conn.commit();
-        
+        await prisma.$transaction([
+            prisma.messages.deleteMany({where: {chat_id}}),
+            prisma.randomChats.deleteMany({where: {chat_id}}),
+            prisma.allChats.deleteMany({where: {chat_id}}),
+            // set both users to available again
+            prisma.randomChatPool.updateMany({
+                where: {OR: [{user_id}, {user_id: other_user_id}]},
+                data: {available: 1}
+            })
+        ]);
+
         return res.status(201).json({success: true, message: "successfully left chat"});
     } catch (err) {
-        conn.rollback();
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});
-    } finally {
-        conn.release();
     }
 });
 
 router.post("/leaveQueue", async (req: Request<{},{},{user_id: number}>, res: Response<standardResponse>) => {
     const {user_id} = req.body;
 
-    const conn = await db.getConnection();
     if (!user_id) {
         return res.status(401).json({success: false, message:"No user selected"});
     }
     try {
         // check if user is even in a queue
-        const [queueStatus] = await db.execute<any[]>(
-            `SELECT available FROM RandomChatPool WHERE user_id=?`,[user_id]
-        )
+        const queueStatus = await prisma.randomChatPool.findFirst({
+            where: {user_id},
+            select: {available: true}
+        });
 
         // if they aren't available THEN:
-        if (queueStatus.length === 0) {
+        if (!queueStatus) {
             return res.status(401).json({success: false, message:"User isn't in queue"});
         }
-        
+
         // if user is available just simply remove
-        if (queueStatus[0].available === 1) {
-            await db.query(
-                `DELETE FROM RandomChatPool WHERE user_id=?`,[user_id]
-            );
+        if (queueStatus.available === 1) {
+            await prisma.randomChatPool.deleteMany({where: {user_id}});
 
             return res.status(201).json({success: true, message: "user successfully removed from pool"});
         }
         // if user is not available NEED to delete the chat TOO
-        conn.beginTransaction();
 
         // get other user in the chat
-        const [getChat] = await db.execute<any[]>(
-            'SELECT chat_id, user_id_1, user_id_2 FROM RandomChats WHERE user_id_1=? OR user_id_2=?',
-            [user_id, user_id]
-        );
-        if (getChat.length === 0) {
+        const getChat = await prisma.randomChats.findFirst({
+            where: {OR: [{user_id_1: user_id}, {user_id_2: user_id}]},
+            select: {chat_id: true, user_id_1: true, user_id_2: true}
+        });
+        if (!getChat) {
             return res.status(401).json({success: false, message:"Random Chat retreival error"});
         }
         let other_user = 0;
-        const chat_id = getChat[0].chat_id;
-        if (getChat[0].user_id_1 !== user_id) {
-            other_user=getChat[0].user_id_1;
+        const chat_id = getChat.chat_id;
+        if (getChat.user_id_1 !== user_id) {
+            other_user=getChat.user_id_1;
         } else {
-            other_user=getChat[0].user_id_2;
+            other_user=getChat.user_id_2;
         }
 
-        conn.execute('DELETE FROM Messages WHERE chat_id = ?', [chat_id]);
-        conn.execute('DELETE FROM RandomChats WHERE chat_id = ?', [chat_id]);
-        conn.execute('DELETE FROM AllChats WHERE chat_id = ?', [chat_id]);
-        conn.execute('UPDATE RandomChatPool SET available=TRUE WHERE user_id=?', [other_user]);
-        // set ONLY otheruser to available again
-        conn.execute(`DELETE FROM RandomChatPool WHERE user_id=?`,[user_id]);
-        conn.commit();
+        await prisma.$transaction([
+            prisma.messages.deleteMany({where: {chat_id}}),
+            prisma.randomChats.deleteMany({where: {chat_id}}),
+            prisma.allChats.deleteMany({where: {chat_id}}),
+            // set ONLY otheruser to available again
+            prisma.randomChatPool.updateMany({where: {user_id: other_user}, data: {available: 1}}),
+            prisma.randomChatPool.deleteMany({where: {user_id}})
+        ]);
         return res.status(201).json({success: true, message: "user successfully removed from queue"});
     } catch (err) {
-        conn.rollback();
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});
-    } finally {
-        conn.release();
     }
 });
 

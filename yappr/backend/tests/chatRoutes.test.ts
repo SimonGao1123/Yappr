@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
 
-import { mockConnection } from './setup.js';
-import db from '../database.js';
+import { prismaMock } from './setup.js';
 import chatRouter from '../routes/chatRoutes.js';
 
 const app = express();
@@ -17,10 +16,6 @@ app.use(session({
 app.use('/chats', chatRouter);
 
 describe('Chat Routes', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   // ==================== CREATE CHAT ====================
   describe('POST /chats/createChat', () => {
     it('should return 401 when creator_id is missing', async () => {
@@ -66,13 +61,11 @@ describe('Chat Routes', () => {
     });
 
     it('should create chat successfully', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([{ insertId: 1 }, []] as any) // INSERT INTO AllChats
-        .mockResolvedValueOnce([[{ friend_id: 1 }], []] as any) // Check friendship
-        .mockResolvedValueOnce([{}, []] as any); // INSERT friend into Chat_Users
-      vi.mocked(db.query)
-        .mockResolvedValueOnce([{}, []] as any) // INSERT INTO Chats
-        .mockResolvedValueOnce([{}, []] as any); // INSERT opening message
+      prismaMock.allChats.create.mockResolvedValueOnce({ chat_id: 1 } as any);
+      prismaMock.chats.create.mockResolvedValueOnce({} as any);
+      prismaMock.chat_Users.create.mockResolvedValue({} as any);
+      prismaMock.friends.findFirst.mockResolvedValueOnce({ friend_id: 1 } as any);
+      prismaMock.messages.create.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/chats/createChat')
@@ -88,8 +81,32 @@ describe('Chat Routes', () => {
       expect(response.body.message).toBe('Successfully created Test Chat');
     });
 
+    it('should roll back and leave no chat behind when a friend check fails', async () => {
+      prismaMock.allChats.create.mockResolvedValueOnce({ chat_id: 1 } as any);
+      prismaMock.chats.create.mockResolvedValueOnce({} as any);
+      prismaMock.chat_Users.create.mockResolvedValue({} as any);
+      prismaMock.friends.findFirst.mockResolvedValueOnce(null); // not actually friends
+
+      const response = await request(app)
+        .post('/chats/createChat')
+        .send({
+          creator_id: 1,
+          creator_username: 'user1',
+          addedFriends: [{ username: 'user2', user_id: 2, friend_id: 1 }],
+          chat_name: 'Test Chat'
+        });
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('user2 is not your friend');
+      // the whole handler runs inside one interactive transaction, so the
+      // AllChats/Chats rows written before the failed check are rolled back
+      expect(prismaMock.$transaction).toHaveBeenCalled();
+      expect(prismaMock.messages.create).not.toHaveBeenCalled();
+    });
+
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.allChats.create.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/chats/createChat')
@@ -108,7 +125,7 @@ describe('Chat Routes', () => {
   // ==================== LEAVE CHAT ====================
   describe('POST /chats/leaveChat', () => {
     it('should return 401 when user is not in the group', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ user_id: 2 }, { user_id: 3 }], []] as any);
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ user_id: 2 }, { user_id: 3 }] as any);
 
       const response = await request(app)
         .post('/chats/leaveChat')
@@ -120,12 +137,11 @@ describe('Chat Routes', () => {
     });
 
     it('should delete group when only user is left', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ user_id: 1 }], []] as any) // Only user in group
-        .mockResolvedValueOnce([{}, []] as any) // DELETE from Messages
-        .mockResolvedValueOnce([{}, []] as any) // DELETE from Chat_Users
-        .mockResolvedValueOnce([{}, []] as any) // DELETE from Chats
-        .mockResolvedValueOnce([{}, []] as any); // DELETE from AllChats
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ user_id: 1 }] as any); // Only user in group
+      prismaMock.messages.deleteMany.mockResolvedValueOnce({ count: 0 });
+      prismaMock.chat_Users.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.chats.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.allChats.deleteMany.mockResolvedValueOnce({ count: 1 });
 
       const response = await request(app)
         .post('/chats/leaveChat')
@@ -134,15 +150,16 @@ describe('Chat Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Successfully deleted group');
+      // the four deletes are now genuinely atomic
+      expect(prismaMock.$transaction).toHaveBeenCalled();
     });
 
     it('should transfer leadership when creator leaves', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ user_id: 1 }, { user_id: 2 }], []] as any) // Users in group
-        .mockResolvedValueOnce([{}, []] as any) // UPDATE creator_id
-        .mockResolvedValueOnce([{}, []] as any) // DELETE from Chat_Users
-        .mockResolvedValueOnce([[{ username: 'user2' }], []] as any) // Get new leader username
-        .mockResolvedValueOnce([{}, []] as any); // INSERT message
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ user_id: 1 }, { user_id: 2 }] as any);
+      prismaMock.chats.updateMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.chat_Users.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.users.findUnique.mockResolvedValueOnce({ username: 'user2' } as any);
+      prismaMock.messages.create.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/chats/leaveChat')
@@ -154,10 +171,9 @@ describe('Chat Routes', () => {
     });
 
     it('should allow normal member to leave', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ user_id: 1 }, { user_id: 2 }], []] as any) // Users in group
-        .mockResolvedValueOnce([{}, []] as any) // DELETE from Chat_Users
-        .mockResolvedValueOnce([{}, []] as any); // INSERT message
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ user_id: 1 }, { user_id: 2 }] as any);
+      prismaMock.chat_Users.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.messages.create.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/chats/leaveChat')
@@ -182,9 +198,10 @@ describe('Chat Routes', () => {
     });
 
     it('should delete chat successfully when user is creator', async () => {
-      mockConnection.beginTransaction.mockResolvedValue(undefined);
-      mockConnection.execute.mockResolvedValue([{}, []] as any);
-      mockConnection.commit.mockResolvedValue(undefined);
+      prismaMock.messages.deleteMany.mockResolvedValueOnce({ count: 0 });
+      prismaMock.chat_Users.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.chats.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.allChats.deleteMany.mockResolvedValueOnce({ count: 1 });
 
       const response = await request(app)
         .post('/chats/deleteChat')
@@ -193,11 +210,13 @@ describe('Chat Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Successfully deleted chat');
+      expect(prismaMock.$transaction).toHaveBeenCalled();
     });
 
-    it('should return 500 on database error', async () => {
-      mockConnection.beginTransaction.mockImplementation(() => { throw new Error('DB Error'); });
-      mockConnection.rollback.mockResolvedValue(undefined);
+    it('should return 500 when the transaction fails', async () => {
+      // Previously this path returned 201 even on failure, because the
+      // transaction calls were never awaited. It now fails loudly.
+      (prismaMock.$transaction as any).mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/chats/deleteChat')
@@ -211,7 +230,7 @@ describe('Chat Routes', () => {
   // ==================== DISPLAY CHATS ====================
   describe('GET /chats/displayChats/:user_id', () => {
     it('should return no chats when user has none', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([]);
 
       const response = await request(app)
         .get('/chats/displayChats/1');
@@ -221,8 +240,56 @@ describe('Chat Routes', () => {
       expect(response.body.message).toBe('No chats');
     });
 
+    it('should pass the user_id to Prisma as a number, not a string', async () => {
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([]);
+
+      await request(app).get('/chats/displayChats/1');
+
+      expect(prismaMock.chat_Users.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { user_id: 1 } })
+      );
+    });
+
+    it('should assemble the chat payload with a stable shape', async () => {
+      prismaMock.chat_Users.findMany
+        .mockResolvedValueOnce([{ chat_id: 1 }] as any)  // chats the user belongs to
+        .mockResolvedValueOnce([                          // members of chat 1
+          { user_id: 1, joined_at: new Date('2026-01-01T00:00:00.000Z') }
+        ] as any);
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce({                          // member profile
+          username: 'user1',
+          joined_at: new Date('2025-06-01T00:00:00.000Z'),
+          description: null
+        } as any)
+        .mockResolvedValueOnce({ username: 'user1' } as any); // creator username
+      prismaMock.friends.findFirst.mockResolvedValueOnce(null);
+      prismaMock.chats.findUnique.mockResolvedValueOnce({ creator_id: 1, chat_name: 'Test Chat' } as any);
+      prismaMock.messages.findFirst.mockResolvedValueOnce(null); // no messages -> read
+
+      const response = await request(app).get('/chats/displayChats/1');
+
+      expect(response.status).toBe(201);
+      expect(response.body.chat_data).toHaveLength(1);
+      expect(response.body.chat_data[0]).toEqual({
+        unread: false,
+        creator_id: 1,
+        creator_username: 'user1',
+        chat_name: 'Test Chat',
+        userList: [{
+          user_id: 1,
+          status: 'none',
+          username: 'user1',
+          account_created: '2025-06-01T00:00:00.000Z',
+          description: null,
+          joined_at: '2026-01-01T00:00:00.000Z'
+        }],
+        chat_id: 1
+      });
+    });
+
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.chat_Users.findMany.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .get('/chats/displayChats/1');
@@ -235,7 +302,7 @@ describe('Chat Routes', () => {
   // ==================== ADD TO CHAT ====================
   describe('POST /chats/addToChat', () => {
     it('should return 401 when user is not in the group', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ user_id: 2 }], []] as any);
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ user_id: 2 }] as any);
 
       const response = await request(app)
         .post('/chats/addToChat')
@@ -248,7 +315,7 @@ describe('Chat Routes', () => {
 
     it('should return 401 when chat would exceed 15 members', async () => {
       const currentUsers = Array.from({ length: 14 }, (_, i) => ({ user_id: i + 1 }));
-      vi.mocked(db.execute).mockResolvedValueOnce([currentUsers, []] as any);
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce(currentUsers as any);
 
       const response = await request(app)
         .post('/chats/addToChat')
@@ -265,12 +332,11 @@ describe('Chat Routes', () => {
     });
 
     it('should add friends to chat successfully', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ user_id: 1 }], []] as any) // Current users
-        .mockResolvedValueOnce([[{ friend_id: 1 }], []] as any) // Check friendship
-        .mockResolvedValueOnce([[], []] as any) // Check not already member
-        .mockResolvedValueOnce([{}, []] as any) // INSERT into Chat_Users
-        .mockResolvedValueOnce([{}, []] as any); // INSERT message
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ user_id: 1 }] as any); // Current users
+      prismaMock.friends.findFirst.mockResolvedValueOnce({ friend_id: 1 } as any);   // Check friendship
+      prismaMock.chat_Users.findFirst.mockResolvedValueOnce(null);                   // Not already a member
+      prismaMock.chat_Users.create.mockResolvedValueOnce({} as any);
+      prismaMock.messages.create.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/chats/addToChat')
@@ -309,7 +375,7 @@ describe('Chat Routes', () => {
     });
 
     it('should return 401 when kicked user is not in the group', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.chat_Users.findFirst.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/chats/kick')
@@ -321,10 +387,9 @@ describe('Chat Routes', () => {
     });
 
     it('should kick user successfully', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ chat_user_id: 1 }], []] as any) // User is in group
-        .mockResolvedValueOnce([{}, []] as any) // DELETE from Chat_Users
-        .mockResolvedValueOnce([{}, []] as any); // INSERT message
+      prismaMock.chat_Users.findFirst.mockResolvedValueOnce({ chat_user_id: 1 } as any);
+      prismaMock.chat_Users.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.messages.create.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/chats/kick')
@@ -333,6 +398,10 @@ describe('Chat Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('user2 was kicked by user1');
+      // the raw SQL spelled this column `user_Id`; MySQL was case-insensitive
+      expect(prismaMock.chat_Users.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { user_id: 2, chat_id: 1 } })
+      );
     });
   });
 
@@ -359,9 +428,8 @@ describe('Chat Routes', () => {
     });
 
     it('should edit chat name successfully', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([{}, []] as any) // UPDATE Chats
-        .mockResolvedValueOnce([{}, []] as any); // INSERT message
+      prismaMock.chats.updateMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.messages.create.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/chats/editChatName')
@@ -373,7 +441,7 @@ describe('Chat Routes', () => {
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.chats.updateMany.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/chats/editChatName')

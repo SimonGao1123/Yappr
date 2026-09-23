@@ -1,15 +1,15 @@
 import express from 'express';
 import type {Request, Response} from 'express';
-import db from '../database.js';
-import mysql from 'mysql2/promise';
+import prisma from '../prisma.js';
+import { messageSelect, toMessagePayload, toSocketPayload } from '../messagePayload.js';
 
-import type { SendMessageInput, SelectChatUsers, DeleteMessageInput, SelectIfMessageExists, ReadMessagesInput, SelectMessagesFromChat, GetAllChatsMessages, GetMessagesResponse, GetAllMessageId } from '../../definitions/messagingTypes.js';
+import type { SendMessageInput, DeleteMessageInput, ReadMessagesInput, GetMessagesResponse } from '../../definitions/messagingTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 import { getIO } from '../socketInstance.js';
 
 const router = express.Router();
 
-// USE MESSAGE ID TO DELETE USERS 
+// USE MESSAGE ID TO DELETE USERS
 
 router.post("/sendMessage", async (req: Request<{},{},SendMessageInput>, res: Response<standardResponse>) => {
     const {chat_id, message, user_id} = req.body;
@@ -19,33 +19,21 @@ router.post("/sendMessage", async (req: Request<{},{},SendMessageInput>, res: Re
 
     try {
         // check if user is in the chat
-        const [rows] = await db.execute<SelectChatUsers[]>(
-            'SELECT * FROM Chat_Users WHERE chat_id=? AND user_id=?',
-            [chat_id, user_id]
-        );
-        if (rows.length === 0) {
+        const membership = await prisma.chat_Users.findFirst({
+            where: {chat_id, user_id}
+        });
+        if (!membership) {
             // user is not in chat
             return res.status(401).json({success: false, message: "User is not in the chat"});
         }
 
-        const [insertResult] = await db.query(
-            'INSERT INTO Messages (chat_id, sender_id, message) VALUES (?, ?, ?)',
-            [chat_id, user_id, message]
-        );
-        const insertId = (insertResult as any).insertId;
+        const created = await prisma.messages.create({
+            data: {chat_id, sender_id: user_id, message},
+            select: messageSelect
+        });
 
         // Emit new message to all clients in this chat room
-        const [newMsgRows] = await db.execute<SelectMessagesFromChat[]>(
-            `SELECT m.message_id, m.sender_id, m.message,
-                    IFNULL(u.username, 'Gemini') AS username, m.sent_at, m.askGemini
-             FROM Messages m
-             LEFT JOIN Users u ON u.user_id = m.sender_id
-             WHERE m.message_id = ?`,
-            [insertId]
-        );
-        if (newMsgRows.length > 0) {
-            try { getIO().to(`chat:${chat_id}`).emit('new-message', newMsgRows[0]); } catch {}
-        }
+        try { getIO().to(`chat:${chat_id}`).emit('new-message', toSocketPayload(created)); } catch {}
 
         return res.status(201).json({success: true, message: "Sent message"});
     } catch (err) {
@@ -63,26 +51,25 @@ router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res
 
     try {
         // check if message exists/is already deleted
-        const [rows] = await db.execute<SelectIfMessageExists[]>(
-            'SELECT sender_id, chat_id, deleted FROM Messages WHERE message_id=?'
-            ,
-            [message_id] 
-        );
+        const row = await prisma.messages.findUnique({
+            where: {message_id},
+            select: {sender_id: true, chat_id: true, deleted: true}
+        });
 
-        if (rows.length === 0 || rows[0]!.deleted) {
+        if (!row || row.deleted) {
             return res.status(401).json({success: false, message: "message doesn't exist"});
         }
-        if (rows[0]!.sender_id !== sender_id) {
+        if (row.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: "this is not message from sender"});
         }
-        if (rows[0]!.chat_id !== chat_id) {
+        if (row.chat_id !== chat_id) {
             return res.status(401).json({success: false, message: "message is in a different chat"});
         }
 
-        await db.query(
-            'UPDATE Messages SET deleted=1 WHERE message_id=?',
-            [message_id]
-        );
+        await prisma.messages.update({
+            where: {message_id},
+            data: {deleted: 1}
+        });
         return res.status(201).json({success: true, message: "Successfully delete message"});
     } catch(err) {
         console.log(err);
@@ -92,28 +79,31 @@ router.post("/deleteMessage", async (req: Request<{},{},DeleteMessageInput>, res
 });
 
 // returns messages for ALL chats
-router.get("/getMessages/:user_id", async (req: Request<{user_id: number}>, res: Response<GetMessagesResponse>) => {
-    const user_id = req.params.user_id;
+router.get("/getMessages/:user_id", async (req: Request<{user_id: string}>, res: Response<GetMessagesResponse>) => {
+    const user_id = Number(req.params.user_id);
 
     try {
-        const [allChatsWithUser] = await db.execute<GetAllChatsMessages[]>(
-            'SELECT chat_id FROM Chat_Users WHERE user_id=?',
-            [user_id]
-        ); 
+        const allChatsWithUser = Number.isInteger(user_id)
+            ? await prisma.chat_Users.findMany({
+                where: {user_id},
+                select: {chat_id: true}
+              })
+            : [];
 
         const messageData = [];
         for (const chat of allChatsWithUser) {
 
             // only saves past 100 messages
-            const [rows] = await db.execute<SelectMessagesFromChat[]>(
-                "SELECT m.askGemini, m.message_id, m.sender_id, m.message, u.username, m.sent_at FROM Messages m JOIN Users u ON u.user_id=m.sender_id WHERE m.random_chat=FALSE AND m.chat_id=? AND m.deleted=0 ORDER BY m.message_id ASC LIMIT 100",
-                [chat.chat_id]
-            ); // good practice, select username and id at same time
-            
+            const rows = await prisma.messages.findMany({
+                where: {random_chat: 0, chat_id: chat.chat_id, deleted: 0},
+                select: messageSelect,
+                orderBy: {message_id: 'asc'},
+                take: 100
+            }); // good practice, select username and id at same time
 
-            messageData.push({chat_id: chat.chat_id, messageData: rows});
+            messageData.push({chat_id: chat.chat_id, messageData: rows.map(toMessagePayload)});
         }
-        
+
         return res.status(200).json({success: true, message: "success get messages", msgData: messageData});
     } catch(err) {
         console.log(err);
@@ -130,20 +120,21 @@ router.post("/readMessages", async (req: Request<{},{},ReadMessagesInput>, res: 
         if (!chat_id || !user_id) return res.status(401).json({success: false, message: "chat does't exist"});
 
         // get most recent message id from the chat
-        const [rows] = await db.execute<GetAllMessageId[]>(
-            'SELECT message_id FROM Messages WHERE chat_id=? AND deleted=0 AND random_chat=FALSE ORDER BY message_id DESC LIMIT 1',
-            [chat_id]
-        );
+        const row = await prisma.messages.findFirst({
+            where: {chat_id, deleted: 0, random_chat: 0},
+            select: {message_id: true},
+            orderBy: {message_id: 'desc'}
+        });
 
-        if (rows.length === 0) {
+        if (!row) {
             return res.status(201).json({success: true, message: "no messages in chat"});
         }
 
-        await db.query(
-            'UPDATE Chat_Users SET last_seen_message_id=? WHERE user_id=? AND chat_id=?',
-            [rows[0]!.message_id, user_id, chat_id]
-        ); 
-        return res.status(201).json({success: true, message: `successfully read chat, new message id: ${rows[0]!.message_id}`});
+        await prisma.chat_Users.updateMany({
+            where: {user_id, chat_id},
+            data: {last_seen_message_id: row.message_id}
+        });
+        return res.status(201).json({success: true, message: `successfully read chat, new message id: ${row.message_id}`});
     } catch (err) {
         console.log(err);
         return res.status(500).json({success: false, message: "Internal server error"});

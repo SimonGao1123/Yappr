@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
 
-import './setup.js';
-import db from '../database.js';
+import { prismaMock } from './setup.js';
 import messagingRouter from '../routes/messagingRoutes.js';
 
 const app = express();
@@ -16,11 +15,19 @@ app.use(session({
 }));
 app.use('/message', messagingRouter);
 
-describe('Messaging Routes', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+function messageRow(overrides: Record<string, unknown> = {}) {
+  return {
+    askGemini: 0,
+    message_id: 1,
+    sender_id: 1,
+    message: 'Hello',
+    sent_at: new Date('2026-01-01T00:00:00.000Z'),
+    user: { username: 'user1' },
+    ...overrides,
+  } as any;
+}
 
+describe('Messaging Routes', () => {
   // ==================== SEND MESSAGE ====================
   describe('POST /message/sendMessage', () => {
     it('should return 401 when message is missing', async () => {
@@ -52,7 +59,7 @@ describe('Messaging Routes', () => {
     });
 
     it('should return 401 when user is not in the chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.chat_Users.findFirst.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/message/sendMessage')
@@ -64,8 +71,8 @@ describe('Messaging Routes', () => {
     });
 
     it('should send message successfully when user is in the chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ chat_id: 1, user_id: 1 }], []] as any);
-      vi.mocked(db.query).mockResolvedValueOnce([{ insertId: 1 }, []] as any);
+      prismaMock.chat_Users.findFirst.mockResolvedValueOnce({ chat_id: 1, user_id: 1 } as any);
+      prismaMock.messages.create.mockResolvedValueOnce(messageRow());
 
       const response = await request(app)
         .post('/message/sendMessage')
@@ -77,7 +84,7 @@ describe('Messaging Routes', () => {
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.chat_Users.findFirst.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/message/sendMessage')
@@ -101,7 +108,7 @@ describe('Messaging Routes', () => {
     });
 
     it('should return 401 when message does not exist', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.messages.findUnique.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/message/deleteMessage')
@@ -113,7 +120,7 @@ describe('Messaging Routes', () => {
     });
 
     it('should return 401 when message is already deleted', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ sender_id: 1, chat_id: 1, deleted: true }], []] as any);
+      prismaMock.messages.findUnique.mockResolvedValueOnce({ sender_id: 1, chat_id: 1, deleted: 1 } as any);
 
       const response = await request(app)
         .post('/message/deleteMessage')
@@ -124,7 +131,7 @@ describe('Messaging Routes', () => {
     });
 
     it('should return 401 when message is in a different chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ sender_id: 1, chat_id: 2, deleted: false }], []] as any);
+      prismaMock.messages.findUnique.mockResolvedValueOnce({ sender_id: 1, chat_id: 2, deleted: 0 } as any);
 
       const response = await request(app)
         .post('/message/deleteMessage')
@@ -135,8 +142,8 @@ describe('Messaging Routes', () => {
     });
 
     it('should delete message successfully', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ sender_id: 1, chat_id: 1, deleted: false }], []] as any);
-      vi.mocked(db.query).mockResolvedValueOnce([{ affectedRows: 1 }, []] as any);
+      prismaMock.messages.findUnique.mockResolvedValueOnce({ sender_id: 1, chat_id: 1, deleted: 0 } as any);
+      prismaMock.messages.update.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/message/deleteMessage')
@@ -145,10 +152,14 @@ describe('Messaging Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Successfully delete message');
+      // soft delete, not a row removal
+      expect(prismaMock.messages.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { deleted: 1 } })
+      );
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.messages.findUnique.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/message/deleteMessage')
@@ -162,7 +173,7 @@ describe('Messaging Routes', () => {
   // ==================== GET MESSAGES ====================
   describe('GET /message/getMessages/:user_id', () => {
     it('should return empty array when user has no chats', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([]);
 
       const response = await request(app)
         .get('/message/getMessages/1');
@@ -174,16 +185,10 @@ describe('Messaging Routes', () => {
 
     it('should return messages from all user chats', async () => {
       // Mock: user is in 2 chats
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ chat_id: 1 }, { chat_id: 2 }], []] as any)
-        // Messages for chat 1
-        .mockResolvedValueOnce([[
-          { message_id: 1, sender_id: 1, message: 'Hello', username: 'user1', sent_at: '2026-01-01', askGemini: false }
-        ], []] as any)
-        // Messages for chat 2
-        .mockResolvedValueOnce([[
-          { message_id: 2, sender_id: 2, message: 'Hi there', username: 'user2', sent_at: '2026-01-01', askGemini: false }
-        ], []] as any);
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ chat_id: 1 }, { chat_id: 2 }] as any);
+      prismaMock.messages.findMany
+        .mockResolvedValueOnce([messageRow({ message_id: 1, sender_id: 1, message: 'Hello' })])
+        .mockResolvedValueOnce([messageRow({ message_id: 2, sender_id: 2, message: 'Hi there', user: { username: 'user2' } })]);
 
       const response = await request(app)
         .get('/message/getMessages/1');
@@ -195,8 +200,35 @@ describe('Messaging Routes', () => {
       expect(response.body.msgData[1].chat_id).toBe(2);
     });
 
+    it('should flatten the joined username and serialise sent_at as an ISO string', async () => {
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([{ chat_id: 1 }] as any);
+      prismaMock.messages.findMany.mockResolvedValueOnce([messageRow()]);
+
+      const response = await request(app)
+        .get('/message/getMessages/1');
+
+      expect(response.body.msgData[0].messageData[0]).toEqual({
+        askGemini: 0,
+        message_id: 1,
+        sender_id: 1,
+        message: 'Hello',
+        username: 'user1',
+        sent_at: '2026-01-01T00:00:00.000Z',
+      });
+    });
+
+    it('should pass the user_id to Prisma as a number, not a string', async () => {
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([]);
+
+      await request(app).get('/message/getMessages/42');
+
+      expect(prismaMock.chat_Users.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { user_id: 42 } })
+      );
+    });
+
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.chat_Users.findMany.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .get('/message/getMessages/1');
@@ -228,7 +260,7 @@ describe('Messaging Routes', () => {
     });
 
     it('should return success when no messages in chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.messages.findFirst.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/message/readMessages')
@@ -240,8 +272,8 @@ describe('Messaging Routes', () => {
     });
 
     it('should update last_seen_message_id successfully', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ message_id: 50 }], []] as any);
-      vi.mocked(db.query).mockResolvedValueOnce([{ affectedRows: 1 }, []] as any);
+      prismaMock.messages.findFirst.mockResolvedValueOnce({ message_id: 50 } as any);
+      prismaMock.chat_Users.updateMany.mockResolvedValueOnce({ count: 1 });
 
       const response = await request(app)
         .post('/message/readMessages')
@@ -250,10 +282,13 @@ describe('Messaging Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('successfully read chat');
+      expect(prismaMock.chat_Users.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { last_seen_message_id: 50 } })
+      );
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.messages.findFirst.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/message/readMessages')

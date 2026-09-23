@@ -1,0 +1,183 @@
+// ┌───────────────────────────────────────────────────────────────────────────┐
+// │ Reconciled against the real chityapp DDL.                                 │
+// │                                                                           │
+// │ Note that AllChats is the id allocator: Chats, RandomChats and Messages   │
+// │ all key off AllChats.chat_id, which is why a random chat's messages are   │
+// │ valid even though that chat_id never appears in Chats.                    │
+// │                                                                           │
+// │ Two standing rules:                                                       │
+// │  1. tinyint(1) columns are modelled as `Int @db.TinyInt`, NOT `Boolean`.  │
+// │     The frontend compares them with `=== 1` (src/App.tsx:143,             │
+// │     MessagingSection.tsx:62,75, RandomChatsPage.tsx:237,252), so mapping  │
+// │     them to Boolean would change the JSON and break rendering.            │
+// │  2. `prisma db pull` overwrites rule 1. After any re-introspection,       │
+// │     re-apply the TinyInt types before generating.                         │
+// │                                                                           │
+// │ Still unverified: the DDL names the chat_id foreign key `fk_chat_id` on   │
+// │ BOTH Chats and Chat_Users, which MySQL cannot accept — constraint names   │
+// │ are unique per database. One of them is actually named something else     │
+// │ live. FK names do not affect queries, only migrations, so this only has   │
+// │ to be settled before generating the cascade migration.                    │
+// └───────────────────────────────────────────────────────────────────────────┘
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../backend/generated/prisma"
+}
+
+// Prisma 7 removed `url` from the datasource block. The CLI reads the
+// connection string from prisma.config.ts; the runtime client gets a
+// PrismaMariaDb driver adapter built from the DB_* env vars in backend/prisma.ts.
+datasource db {
+  provider = "mysql"
+}
+
+model Users {
+  user_id               Int       @id @default(autoincrement())
+  username              String    @unique(map: "uniq_username") @db.VarChar(30)
+  password              String    @db.VarChar(225)
+  email                 String    @unique(map: "uniq_email") @db.VarChar(225)
+  joined_at             DateTime  @default(now()) @db.Timestamp(0)
+  description           String?   @db.Text
+  last_updated_username DateTime  @default(now()) @db.Timestamp(0)
+
+  settings              Settings?
+  created_chats         Chats[]           @relation("ChatCreator")
+  chat_memberships      Chat_Users[]
+  messages              Messages[]
+  sent_requests         Friends[]         @relation("FriendsSender")
+  received_requests     Friends[]         @relation("FriendsReceiver")
+  random_chat_pool      RandomChatPool?
+
+  @@map("users")
+}
+
+model Friends {
+  friend_id   Int      @id @default(autoincrement())
+  sender_id   Int
+  receiver_id Int
+  status      String   @db.VarChar(20)
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+  updated_at  DateTime @default(now()) @db.Timestamp(0)
+
+  sender   Users @relation("FriendsSender", fields: [sender_id], references: [user_id], map: "fk_friends_sender")
+  receiver Users @relation("FriendsReceiver", fields: [receiver_id], references: [user_id], map: "fk_friends_receiver")
+
+  @@index([sender_id], map: "fk_friends_sender")
+  @@index([receiver_id], map: "fk_friends_receiver")
+  @@map("friends")
+}
+
+// Allocates every chat_id in the system. Group chats get a matching `chats`
+// row, random chats get a matching `randomchats` row. chatRoutes.ts:21 inserts
+// here with no columns, so every column must keep a default.
+model AllChats {
+  chat_id   Int  @id @default(autoincrement())
+  if_random Int? @default(0) @db.TinyInt
+
+  chat        Chats?
+  random_chat RandomChats?
+  messages    Messages[]
+
+  @@map("allchats")
+}
+
+model Chats {
+  chat_id    Int      @id
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  creator_id Int
+  chat_name  String   @db.VarChar(30)
+
+  // ties the group chat to its id allocation
+  all_chat AllChats @relation(fields: [chat_id], references: [chat_id], map: "fk_chat_id")
+  creator  Users    @relation("ChatCreator", fields: [creator_id], references: [user_id], map: "fk_chat_creator")
+  members  Chat_Users[]
+
+  @@index([creator_id], map: "fk_chat_creator")
+  @@map("chats")
+}
+
+model Chat_Users {
+  chat_user_id         Int      @id @default(autoincrement())
+  chat_id              Int
+  user_id              Int
+  joined_at            DateTime @default(now()) @db.Timestamp(0)
+  last_seen_message_id Int      @default(0)
+
+  chat Chats @relation(fields: [chat_id], references: [chat_id])
+  user Users @relation(fields: [user_id], references: [user_id], map: "fk_chat_user_id")
+
+  @@index([chat_id], map: "fk_chat_id")
+  @@index([user_id], map: "fk_chat_user_id")
+  @@map("chat_users")
+}
+
+model Messages {
+  message_id  Int      @id @default(autoincrement())
+  chat_id     Int
+  sender_id   Int
+  message     String   @db.Text
+  sent_at     DateTime @default(now()) @db.Timestamp(0)
+  deleted     Int?     @default(0) @db.TinyInt
+  askGemini   Int?     @default(0) @db.TinyInt
+  random_chat Int?     @default(0) @db.TinyInt
+
+  // points at allchats, not chats: chatMatcher.ts writes messages for random
+  // chats, whose chat_id exists only in allchats
+  chat AllChats @relation(fields: [chat_id], references: [chat_id], map: "fk_msgs_chat_id")
+  // sender_id -1 is a real seeded row (username "server"), so this is required.
+  user Users    @relation(fields: [sender_id], references: [user_id], map: "fk_sender_id")
+
+  @@index([chat_id], map: "fk_msgs_chat_id")
+  @@index([sender_id], map: "fk_sender_id")
+  @@map("messages")
+}
+
+model Settings {
+  user_id    Int  @id
+  light_mode Int? @default(1) @db.TinyInt
+
+  user Users @relation(fields: [user_id], references: [user_id], map: "fk_settings_user_id")
+
+  @@map("settings")
+}
+
+// user_id_1/user_id_2 are UNIQUE and reference RandomChatPool.user_id — NOT
+// Users.user_id. A user therefore has to be in the pool to be in a random chat,
+// and can occupy each side of at most one chat.
+model RandomChats {
+  chat_id    Int      @id
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  user_id_1  Int      @unique
+  user_id_2  Int      @unique
+
+  all_chat AllChats       @relation(fields: [chat_id], references: [chat_id], map: "fk_random_chat_id")
+  user_1   RandomChatPool @relation("RandomChatUser1", fields: [user_id_1], references: [user_id], map: "fk_random_user_1")
+  user_2   RandomChatPool @relation("RandomChatUser2", fields: [user_id_2], references: [user_id], map: "fk_random_user_2")
+
+  @@map("randomchats")
+}
+
+model RandomChatPool {
+  random_chat_user Int      @id @default(autoincrement())
+  user_id          Int      @unique
+  available        Int?     @default(1) @db.TinyInt
+  time_joined      DateTime @default(now()) @db.Timestamp(0)
+
+  user            Users        @relation(fields: [user_id], references: [user_id], map: "fk_random_pool_id")
+  chat_as_user_1  RandomChats? @relation("RandomChatUser1")
+  chat_as_user_2  RandomChats? @relation("RandomChatUser2")
+
+  @@map("randomchatpool")
+}
+
+// Required shape for @quixo3/prisma-session-store. Replaces the old
+// express-mysql-session `sessions` table, which is not row-compatible.
+model Session {
+  id        String   @id
+  sid       String   @unique
+  data      String   @db.Text
+  expiresAt DateTime
+
+  @@map("session")
+}

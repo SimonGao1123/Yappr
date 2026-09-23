@@ -15,6 +15,9 @@ dist-ssr
 # Ignore database.js in backend folder
 backend/.env
 
+# Generated Prisma client — rebuilt by `prisma generate`
+backend/generated
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

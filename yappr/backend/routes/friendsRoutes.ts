@@ -1,14 +1,14 @@
 import express from 'express';
-import db from '../database.js';
+import prisma from '../prisma.js';
 import type {Request, Response} from 'express';
 const router = express.Router();
 
-import type { CancelRequestInput, FriendRequestQuery, CheckIfUsernameOrID, CurrStatus, AcceptRejectRequestInput, SendRequestInput, UnfriendInput, CurrOutIncFriendsQuery, GetCurrFriendsResponse, GetIncFriendsResponse, GetOutFriendsResponse } from '../../definitions/friendsTypes.js';
+import type { CancelRequestInput, AcceptRejectRequestInput, SendRequestInput, UnfriendInput, GetCurrFriendsResponse, GetIncFriendsResponse, GetOutFriendsResponse } from '../../definitions/friendsTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 
 
-/* 
-    POSSIBLE STATUS: 
+/*
+    POSSIBLE STATUS:
         - pending
         - rejected
         - accepted
@@ -25,21 +25,25 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
         }
 
         // Check if receiver_id is a username or id
-        const [ifUsername] = await db.execute<CheckIfUsernameOrID[]>(
-            'SELECT user_id FROM Users WHERE username = ?', [receiver_id]
-        ); // ifUsername/ifId will be [rows, fields] (2d array)
-        // assume receiver_id is an id
-        const [ifId] = await db.execute<CheckIfUsernameOrID[]>(
-            'SELECT username, user_id FROM Users WHERE user_id = ?', [receiver_id]
-        );
+        const ifUsername = await prisma.users.findUnique({
+            where: {username: String(receiver_id)},
+            select: {user_id: true}
+        });
+        // assume receiver_id is an id. MySQL used to coerce a non-numeric
+        // string to 0 here; Prisma rejects it, so only look up a real integer.
+        const receiverIdNum = /^-?\d+$/.test(String(receiver_id)) ? Number(receiver_id) : null;
+        const ifId = receiverIdNum === null ? null : await prisma.users.findUnique({
+            where: {user_id: receiverIdNum},
+            select: {username: true, user_id: true}
+        });
 
-        if (ifUsername.length !== 0) { // receiver_id is a username
-            idReceiver = ifUsername[0]!.user_id;
+        if (ifUsername) { // receiver_id is a username
+            idReceiver = ifUsername.user_id;
             usernameReceiver = String(receiver_id);
         }
-        else if (ifId.length !== 0) { // if receiver_id is a id
+        else if (ifId) { // if receiver_id is a id
             idReceiver = Number(receiver_id);
-            usernameReceiver = String(ifId[0]!.username);
+            usernameReceiver = String(ifId.username);
         }
         else {
             return res.status(401).json({success: false, message: "User doesn't exist"});
@@ -53,43 +57,42 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
             // sent to server user
         }
 
-        const [rowsCurrStatus] = await db.execute<CurrStatus[]>(
-            'SELECT friend_id, status FROM Friends WHERE sender_id = ? AND receiver_id = ?',
-            [sender_id, idReceiver]
-        );
-        
-        const [swappedRowsCurrStatus] = await db.execute<CurrStatus[]>(
-            'SELECT friend_id, status FROM Friends WHERE sender_id = ? AND receiver_id = ?',
-            [idReceiver, sender_id]
-        );
+        const rowsCurrStatus = await prisma.friends.findFirst({
+            where: {sender_id, receiver_id: idReceiver},
+            select: {friend_id: true, status: true}
+        });
 
-        if (rowsCurrStatus.length === 0 && swappedRowsCurrStatus.length === 0) {
+        const swappedRowsCurrStatus = await prisma.friends.findFirst({
+            where: {sender_id: idReceiver, receiver_id: sender_id},
+            select: {friend_id: true, status: true}
+        });
+
+        if (!rowsCurrStatus && !swappedRowsCurrStatus) {
             // no existing request
-            await db.query(
-                'INSERT INTO Friends (sender_id, receiver_id, status) VALUES (?, ?, ?)',
-                [sender_id, idReceiver, "pending"]
-            );
+            await prisma.friends.create({
+                data: {sender_id, receiver_id: idReceiver, status: "pending"}
+            });
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         }
 
-        if (rowsCurrStatus[0]?.status === "pending" || swappedRowsCurrStatus[0]?.status === "pending") {
+        if (rowsCurrStatus?.status === "pending" || swappedRowsCurrStatus?.status === "pending") {
             return res.status(401).json({success: false, message: "friend request already active"});
         }
-        else if (rowsCurrStatus[0]?.status === "accepted" || swappedRowsCurrStatus[0]?.status === "accepted") {
+        else if (rowsCurrStatus?.status === "accepted" || swappedRowsCurrStatus?.status === "accepted") {
             return res.status(401).json({success: false, message: "User is already friends with you"});
         }
-        else if (rowsCurrStatus[0]?.status === "unfriended" || rowsCurrStatus[0]?.status === "rejected") {
-            await db.query(
-                'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
-                ["pending", rowsCurrStatus[0].friend_id]
-            )
+        else if (rowsCurrStatus?.status === "unfriended" || rowsCurrStatus?.status === "rejected") {
+            await prisma.friends.updateMany({
+                where: {friend_id: rowsCurrStatus.friend_id},
+                data: {status: "pending", updated_at: new Date()}
+            });
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         }
-        else if (swappedRowsCurrStatus[0]?.status === "unfriended" || swappedRowsCurrStatus[0]?.status === "rejected") {
-            await db.query(
-                'UPDATE Friends SET status=?, sender_id=?, receiver_id=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
-                ["pending", sender_id, idReceiver, swappedRowsCurrStatus[0].friend_id]
-            )
+        else if (swappedRowsCurrStatus?.status === "unfriended" || swappedRowsCurrStatus?.status === "rejected") {
+            await prisma.friends.updateMany({
+                where: {friend_id: swappedRowsCurrStatus.friend_id},
+                data: {status: "pending", sender_id, receiver_id: idReceiver, updated_at: new Date()}
+            });
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         } else {
             return res.status(401).json({success: false, message: "Invalid status"});
@@ -108,24 +111,24 @@ router.post("/cancel", async (req: Request<{},{},CancelRequestInput>, res: Respo
 
     // USER IS SENDER
     try {
-        const [rows] = await db.execute<FriendRequestQuery[]>(
-            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
-            [friend_id]
-        );
-        if (rows.length === 0) {
+        const row = await prisma.friends.findUnique({
+            where: {friend_id},
+            select: {status: true, sender_id: true, receiver_id: true}
+        });
+        if (!row) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0]!.status !== "pending") {
+        if (row.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0]!.receiver_id !== receiver_id) {
+        if (row.receiver_id !== receiver_id) {
             return res.status(401).json({success: false, message: `You don't have a friend request to ${receiver_username}`});
         }
 
-        await db.query(
-            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
-            ["rejected", friend_id]
-        );
+        await prisma.friends.updateMany({
+            where: {friend_id},
+            data: {status: "rejected", updated_at: new Date()}
+        });
         return res.status(201).json({success: true, message: `Successfully cancelled request towards ${receiver_username}`});
     } catch (err) {
         console.log("Error while cancelling friend request: ", err);
@@ -137,30 +140,30 @@ router.post("/reject", async (req: Request<{},{},AcceptRejectRequestInput>, res:
 
     // only valid for pending requests
     try {
-        const [rows] = await db.execute<FriendRequestQuery[]>(
-            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
-            [friend_id]
-        );
-        if (rows.length === 0) {
+        const row = await prisma.friends.findUnique({
+            where: {friend_id},
+            select: {status: true, sender_id: true, receiver_id: true}
+        });
+        if (!row) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0]!.status !== "pending") {
+        if (row.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0]!.sender_id !== sender_id) {
+        if (row.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
         }
 
-        await db.query(
-            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
-            ["rejected", friend_id]
-        );
+        await prisma.friends.updateMany({
+            where: {friend_id},
+            data: {status: "rejected", updated_at: new Date()}
+        });
         return res.status(201).json({success: true, message: `Successfully rejected ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while rejecting friend request: ", err);
         return res.status(500).json({success: false, message: "Internal server error"});
     }
-    
+
 });
 
 router.post("/accept", async (req: Request<{},{},AcceptRejectRequestInput>, res:Response<standardResponse>) => {
@@ -168,24 +171,24 @@ router.post("/accept", async (req: Request<{},{},AcceptRejectRequestInput>, res:
 
     // only valid for pending requests
     try {
-        const [rows] = await db.execute<FriendRequestQuery[]>(
-            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
-            [friend_id]
-        );
-        if (rows.length === 0) {
+        const row = await prisma.friends.findUnique({
+            where: {friend_id},
+            select: {status: true, sender_id: true, receiver_id: true}
+        });
+        if (!row) {
             return res.status(401).json({success: false, message: "Friend request not found"});
         }
-        if (rows[0]!.status !== "pending") {
+        if (row.status !== "pending") {
             return res.status(401).json({success: false, message: "Friend request is not pending"});
         }
-        if (rows[0]!.sender_id !== sender_id) {
+        if (row.sender_id !== sender_id) {
             return res.status(401).json({success: false, message: `${sender_username} does not have a friend request directed towards you`});
         }
 
-        await db.query(
-            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
-            ["accepted", friend_id]
-        );
+        await prisma.friends.updateMany({
+            where: {friend_id},
+            data: {status: "accepted", updated_at: new Date()}
+        });
         return res.status(201).json({success: true, message: `Successfully accepted ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while accepting friend request: ", err);
@@ -198,21 +201,21 @@ router.post("/unfriend", async(req: Request<{},{},UnfriendInput>, res: Response<
 
     // only valid for accepted
     try {
-        const [rows] = await db.execute<FriendRequestQuery[]>(
-            'SELECT status, sender_id, receiver_id FROM Friends WHERE friend_id=?',
-            [friend_id]
-        );
-        if (rows.length === 0) {
+        const row = await prisma.friends.findUnique({
+            where: {friend_id},
+            select: {status: true, sender_id: true, receiver_id: true}
+        });
+        if (!row) {
             return res.status(401).json({success: false, message: "Friend not found"});
         }
-        if (rows[0]!.status !== "accepted") {
+        if (row.status !== "accepted") {
             return res.status(401).json({success: false, message: "Currently not friends with user"});
         }
 
-        await db.query(
-            'UPDATE Friends SET status=?, updated_at = CURRENT_TIMESTAMP WHERE friend_id = ?',
-            ["unfriended", friend_id]
-        );
+        await prisma.friends.updateMany({
+            where: {friend_id},
+            data: {status: "unfriended", updated_at: new Date()}
+        });
         return res.status(201).json({success: true, message: `Successfully unfriended ${other_user_username}`});
     } catch (err) {
         console.log("Error while unfriending: ", err);
@@ -221,48 +224,84 @@ router.post("/unfriend", async(req: Request<{},{},UnfriendInput>, res: Response<
 });
 
 // return array of objects including their username, user_id, and friend_id
-router.get("/currFriends/:user_id", async(req: Request<{user_id:number}>, res: Response<GetCurrFriendsResponse>) => {
-    const user_id = req.params.user_id; // gets the current user logged in id
+router.get("/currFriends/:user_id", async(req: Request<{user_id:string}>, res: Response<GetCurrFriendsResponse>) => {
+    const user_id = Number(req.params.user_id); // gets the current user logged in id
 
     try {
-        const [currFriends] = await db.execute<CurrOutIncFriendsQuery[]>(
-            
-            'SELECT f.friend_id, u.username, u.user_id FROM Friends f JOIN Users u ON u.user_id=CASE WHEN f.sender_id=? THEN f.receiver_id ELSE f.sender_id END WHERE (f.sender_id=? OR f.receiver_id=?) AND status="accepted"'
-            , [user_id, user_id, user_id]
-        )
+        // Replaces a JOIN whose ON clause was a CASE expression picking the
+        // "other" side of the friendship. Both sides are selected instead and
+        // the branch is resolved in JS.
+        const rows = Number.isInteger(user_id)
+            ? await prisma.friends.findMany({
+                where: {status: "accepted", OR: [{sender_id: user_id}, {receiver_id: user_id}]},
+                select: {
+                    friend_id: true,
+                    sender_id: true,
+                    sender: {select: {user_id: true, username: true}},
+                    receiver: {select: {user_id: true, username: true}}
+                },
+                orderBy: {friend_id: 'asc'}
+              })
+            : [];
+
+        // key order matches the old SELECT list: friend_id, username, user_id
+        const currFriends = rows.map((r) => {
+            const other = r.sender_id === user_id ? r.receiver : r.sender;
+            return {friend_id: r.friend_id, username: other.username, user_id: other.user_id};
+        });
 
         return res.status(200).json({success: true, message: "updated current friends list", currFriends:currFriends});
     } catch (err) {
         console.log("Error while displaying friends: ", err);
         return res.status(500).json({success: false, message: "Internal server error"});
     }
-    
+
 });
-router.get("/incomingRequests/:user_id", async(req: Request<{user_id:number}>, res: Response<GetIncFriendsResponse>) => {
-    const user_id = req.params.user_id;
+router.get("/incomingRequests/:user_id", async(req: Request<{user_id:string}>, res: Response<GetIncFriendsResponse>) => {
+    const user_id = Number(req.params.user_id);
     try {
         // user is the receiver and returns all PENDING
-        const [rows] = await db.execute<CurrOutIncFriendsQuery[]>(
-            'SELECT f.friend_id, u.user_id, u.username FROM Friends f JOIN Users u ON f.sender_id=u.user_id WHERE receiver_id=? AND status="pending"',
-            [user_id]
-        );
+        const rows = Number.isInteger(user_id)
+            ? await prisma.friends.findMany({
+                where: {receiver_id: user_id, status: "pending"},
+                select: {friend_id: true, sender: {select: {user_id: true, username: true}}},
+                orderBy: {friend_id: 'asc'}
+              })
+            : [];
 
-        return res.status(200).json({success: true, message: "updated incoming friend requests list", incomingRequests: rows});
+        // key order matches the old SELECT list: friend_id, user_id, username
+        const incomingRequests = rows.map((r) => ({
+            friend_id: r.friend_id,
+            user_id: r.sender.user_id,
+            username: r.sender.username
+        }));
+
+        return res.status(200).json({success: true, message: "updated incoming friend requests list", incomingRequests});
     } catch (err) {
         console.log("Error while displaying incoming friend requests: ", err);
         return res.status(500).json({success: false, message: "Internal server error"});
     }
 });
-router.get("/outgoingRequests/:user_id", async (req: Request<{user_id:number}>, res: Response<GetOutFriendsResponse>) => {
-    const user_id = req.params.user_id;
+router.get("/outgoingRequests/:user_id", async (req: Request<{user_id:string}>, res: Response<GetOutFriendsResponse>) => {
+    const user_id = Number(req.params.user_id);
     try {
         // user is the sender and returns all PENDING
-        const [rows] = await db.execute<CurrOutIncFriendsQuery[]>(
-            'SELECT f.friend_id, u.user_id, u.username FROM Friends f JOIN Users u ON f.receiver_id=u.user_id WHERE f.sender_id=? AND status="pending"',
-            [user_id]
-        );
+        const rows = Number.isInteger(user_id)
+            ? await prisma.friends.findMany({
+                where: {sender_id: user_id, status: "pending"},
+                select: {friend_id: true, receiver: {select: {user_id: true, username: true}}},
+                orderBy: {friend_id: 'asc'}
+              })
+            : [];
 
-        return res.status(200).json({success: true, message: "updated outgoing friend requests list", outgoingRequests: rows});
+        // key order matches the old SELECT list: friend_id, user_id, username
+        const outgoingRequests = rows.map((r) => ({
+            friend_id: r.friend_id,
+            user_id: r.receiver.user_id,
+            username: r.receiver.username
+        }));
+
+        return res.status(200).json({success: true, message: "updated outgoing friend requests list", outgoingRequests});
     } catch (err) {
         console.log("Error while displaying outgoing friend requests: ", err);
         return res.status(500).json({success: false, message: "Internal server error"});

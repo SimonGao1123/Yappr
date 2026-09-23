@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 
-import './setup.js'; // turns into a fake database
-import db from '../database.js';
+import { prismaMock } from './setup.js'; // turns into a fake database
 import friendsRouter from '../routes/friendsRoutes.js';
 
 const app = express();
@@ -12,10 +11,6 @@ app.use(express.json());
 app.use('/friends', friendsRouter); // call friends router to test
 
 describe('Friends Routes Testing', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
     describe('POST /friends/sendFriendRequest', () => {
         it('Should return Invalid user ID/username if try to friend server id=-1', async () => {
             const response = await request(app).post('/friends/sendFriendRequest')
@@ -27,13 +22,12 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Should send valid friend request from user_id 1 to user_id 2 (no friendship prior)', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{user_id: 1}], []] as any) // inputted username
-            .mockResolvedValueOnce([[], []] as any)
-            .mockResolvedValueOnce([[], []] as any)
-            .mockResolvedValueOnce([[], []] as any)
+            prismaMock.users.findUnique.mockResolvedValueOnce({user_id: 1} as any); // inputted username
+            prismaMock.friends.findFirst
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+            prismaMock.friends.create.mockResolvedValueOnce({} as any);
 
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
             const response = await request(app).post('/friends/sendFriendRequest')
             .send({sender_id: 2, receiver_id: "test"}) // will get username "test" and first database query gets id of 1
             // sends from user_id of 2
@@ -41,12 +35,29 @@ describe('Friends Routes Testing', () => {
             expect(response.body.success).toBe(true);
         });
 
+        it('Should not attempt a numeric id lookup when receiver_id is a username', async () => {
+            prismaMock.users.findUnique.mockResolvedValueOnce({user_id: 1} as any);
+            prismaMock.friends.findFirst
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+            prismaMock.friends.create.mockResolvedValueOnce({} as any);
+
+            await request(app).post('/friends/sendFriendRequest')
+            .send({sender_id: 2, receiver_id: "someusername"});
+
+            // MySQL used to coerce 'someusername' to 0 here; Prisma would throw,
+            // so the id lookup must be skipped entirely for non-numeric input.
+            expect(prismaMock.users.findUnique).toHaveBeenCalledTimes(1);
+            expect(prismaMock.users.findUnique).toHaveBeenCalledWith(
+                expect.objectContaining({where: {username: "someusername"}})
+            );
+        });
+
         it('Should reject, sending friend request to someone who already friends with', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{user_id: 1}], []] as any) // inputted username
-            .mockResolvedValueOnce([[], []] as any)
-            .mockResolvedValueOnce([[{friend_id: 1, status: "accepted"}], []] as any)
-            .mockResolvedValueOnce([[], []] as any)
+            prismaMock.users.findUnique.mockResolvedValueOnce({user_id: 1} as any); // inputted username
+            prismaMock.friends.findFirst
+                .mockResolvedValueOnce({friend_id: 1, status: "accepted"} as any)
+                .mockResolvedValueOnce(null);
 
             const response = await request(app).post('/friends/sendFriendRequest')
             .send({sender_id: 2, receiver_id: "test"}) // will get username "test" and first database query gets id of 1
@@ -57,11 +68,12 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Should reject, friend request pending (sender has already sent a friend request)', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[], []] as any) // inputted username
-            .mockResolvedValueOnce([[{username: "test", user_id: 1}], []] as any)
-            .mockResolvedValueOnce([[{friend_id: 1, status: "pending"}], []] as any)
-            .mockResolvedValueOnce([[], []] as any)
+            prismaMock.users.findUnique
+                .mockResolvedValueOnce(null) // inputted username
+                .mockResolvedValueOnce({username: "test", user_id: 1} as any);
+            prismaMock.friends.findFirst
+                .mockResolvedValueOnce({friend_id: 1, status: "pending"} as any)
+                .mockResolvedValueOnce(null);
 
             const response = await request(app).post('/friends/sendFriendRequest')
             .send({sender_id: 2, receiver_id: "1"}) // will get username "test" and first database query gets id of 1
@@ -72,11 +84,12 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Should reject, friend request pending (receiver has already sent a friend request to sender)', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[], []] as any) // inputted username
-            .mockResolvedValueOnce([[{username: "test", user_id: 1}], []] as any)
-            .mockResolvedValueOnce([[], []] as any)
-            .mockResolvedValueOnce([[{friend_id: 1, status: "pending"}], []] as any)
+            prismaMock.users.findUnique
+                .mockResolvedValueOnce(null) // inputted username
+                .mockResolvedValueOnce({username: "test", user_id: 1} as any);
+            prismaMock.friends.findFirst
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce({friend_id: 1, status: "pending"} as any);
 
             const response = await request(app).post('/friends/sendFriendRequest')
             .send({sender_id: 2, receiver_id: "1"}) // will get username "test" and first database query gets id of 1
@@ -87,7 +100,7 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Should reject, receiver id is null (not a valid user)', async () => {
-            
+
             const response = await request(app).post('/friends/sendFriendRequest')
             .send({sender_id: 1, receiver_id: null}) // will get username "test" and first database query gets id of 1
             // sends from user_id of 2
@@ -99,9 +112,8 @@ describe('Friends Routes Testing', () => {
 
     describe('POST /friends/cancel', () => {
         it('No friend request found', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[], []] as any)
-            
+            prismaMock.friends.findUnique.mockResolvedValueOnce(null);
+
             const response = await request(app).post('/friends/cancel')
             .send({friend_id: 1, receiver_id: 1, receiver_username: 'test'});
 
@@ -111,9 +123,8 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Friend request is not pending', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "accepted", sender_id: 2, receiver_id: 1}], []] as any)
-            
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "accepted", sender_id: 2, receiver_id: 1} as any);
+
             const response = await request(app).post('/friends/cancel')
             .send({friend_id: 1, receiver_id: 1, receiver_username: 'test'});
 
@@ -123,9 +134,8 @@ describe('Friends Routes Testing', () => {
         });
 
         it('It is actually the other user who is sending a friend request at you', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "pending", sender_id: 1, receiver_id: 2}], []] as any)
-            
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "pending", sender_id: 1, receiver_id: 2} as any);
+
             const response = await request(app).post('/friends/cancel')
             .send({friend_id: 1, receiver_id: 1, receiver_username: 'test'});
 
@@ -135,11 +145,10 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Successfully cancel friend request directed at user_id 1 username: testing', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "pending", sender_id: 2, receiver_id: 1}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
-            const response = await request(app).post('/friends/cancel') 
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "pending", sender_id: 2, receiver_id: 1} as any);
+            prismaMock.friends.updateMany.mockResolvedValueOnce({count: 1});
+
+            const response = await request(app).post('/friends/cancel')
             .send({friend_id: 1, receiver_id: 1, receiver_username: 'testing'});
 
             expect(response.status).toBe(201);
@@ -151,10 +160,9 @@ describe('Friends Routes Testing', () => {
     describe('POST /friends/reject', () => {
         // when friend request is directed at you (you are the receiver)
         it('Successfully reject friend request', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "pending", sender_id: 2, receiver_id: 1}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "pending", sender_id: 2, receiver_id: 1} as any);
+            prismaMock.friends.updateMany.mockResolvedValueOnce({count: 1});
+
             const response = await request(app).post('/friends/reject')
             .send({friend_id: 1, sender_username: "testing", sender_id: 2});
 
@@ -164,10 +172,8 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Friend request was not pending', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "accepted", sender_id: 2, receiver_id: 1}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "accepted", sender_id: 2, receiver_id: 1} as any);
+
             const response = await request(app).post('/friends/reject')
             .send({friend_id: 1, sender_username: "testing", sender_id: 2});
 
@@ -178,10 +184,8 @@ describe('Friends Routes Testing', () => {
 
         // turns out you are the sender
         it('Roles are reversed, you are the sender (cannot reject your own request)', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "pending", sender_id: 1, receiver_id: 2}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "pending", sender_id: 1, receiver_id: 2} as any);
+
             const response = await request(app).post('/friends/reject')
             .send({friend_id: 1, sender_username: "testing", sender_id: 2});
 
@@ -194,10 +198,9 @@ describe('Friends Routes Testing', () => {
     describe('POST /friends/accept', () => {
         // when friend request is directed at you (you are the receiver)
         it('Successfully accept friend request', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "pending", sender_id: 2, receiver_id: 1}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "pending", sender_id: 2, receiver_id: 1} as any);
+            prismaMock.friends.updateMany.mockResolvedValueOnce({count: 1});
+
             const response = await request(app).post('/friends/accept')
             .send({friend_id: 1, sender_username: "testing", sender_id: 2});
 
@@ -207,10 +210,8 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Friend request was not pending', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "accepted", sender_id: 2, receiver_id: 1}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "accepted", sender_id: 2, receiver_id: 1} as any);
+
             const response = await request(app).post('/friends/accept')
             .send({friend_id: 1, sender_username: "testing", sender_id: 2});
 
@@ -221,10 +222,8 @@ describe('Friends Routes Testing', () => {
 
         // turns out you are the sender
         it('Roles are reversed, you are the sender (cannot reject your own request)', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "pending", sender_id: 1, receiver_id: 2}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "pending", sender_id: 1, receiver_id: 2} as any);
+
             const response = await request(app).post('/friends/accept')
             .send({friend_id: 1, sender_username: "testing", sender_id: 2});
 
@@ -237,10 +236,8 @@ describe('Friends Routes Testing', () => {
     describe("POST /friends/unfriend", () => {
         // only valid for accepted
         it('Successfully unfriend', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "accepted", sender_id: 1, receiver_id: 2}], []] as any)
-            
-            vi.mocked(db.query).mockResolvedValueOnce({} as any);
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "accepted", sender_id: 1, receiver_id: 2} as any);
+            prismaMock.friends.updateMany.mockResolvedValueOnce({count: 1});
 
             const response = await request(app).post('/friends/unfriend')
             .send({friend_id: 1, other_user_username: "testing"});
@@ -251,9 +248,7 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Friend request is currently pending', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[{status: "pending", sender_id: 1, receiver_id: 2}], []] as any)
-            
+            prismaMock.friends.findUnique.mockResolvedValueOnce({status: "pending", sender_id: 1, receiver_id: 2} as any);
 
             const response = await request(app).post('/friends/unfriend')
             .send({friend_id: 1, other_user_username: "testing"});
@@ -264,9 +259,7 @@ describe('Friends Routes Testing', () => {
         });
 
         it('Friend request doesnt exist', async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[], []] as any)
-            
+            prismaMock.friends.findUnique.mockResolvedValueOnce(null);
 
             const response = await request(app).post('/friends/unfriend')
             .send({friend_id: 1, other_user_username: "testing"});
@@ -278,53 +271,55 @@ describe('Friends Routes Testing', () => {
     });
 
     describe("GET /friends/currFriends", () => {
-        it("Successfully get current friends list", async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[
-                {friend_id: 1, username: "test1", user_id: 1},
-            {friend_id: 2, username: "test2", user_id: 2}], []] as any)
-            
+        it("Successfully get current friends list, resolving both sides of the friendship", async () => {
+            // user 3 is the sender on the first row and the receiver on the second,
+            // so the "other" user has to be picked from opposite columns
+            prismaMock.friends.findMany.mockResolvedValueOnce([
+                {friend_id: 1, sender_id: 3, sender: {user_id: 3, username: "me"}, receiver: {user_id: 1, username: "test1"}},
+                {friend_id: 2, sender_id: 2, sender: {user_id: 2, username: "test2"}, receiver: {user_id: 3, username: "me"}}
+            ] as any);
+
             const response = await request(app).get('/friends/currFriends/3');
 
             expect(response.status).toBe(200);
             expect(response.body.message).toBe("updated current friends list");
             expect(response.body.currFriends).toEqual([
                 {friend_id: 1, username: "test1", user_id: 1},
-            {friend_id: 2, username: "test2", user_id: 2}]);
+                {friend_id: 2, username: "test2", user_id: 2}]);
         })
     });
 
     describe("GET /friends/incomingRequests", () => {
         it("Successfully get incoming friend requests list", async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[
-                {friend_id: 1, username: "test1", user_id: 1},
-            {friend_id: 2, username: "test2", user_id: 2}], []] as any)
-            
+            prismaMock.friends.findMany.mockResolvedValueOnce([
+                {friend_id: 1, sender: {user_id: 1, username: "test1"}},
+                {friend_id: 2, sender: {user_id: 2, username: "test2"}}
+            ] as any);
+
             const response = await request(app).get('/friends/incomingRequests/3');
 
             expect(response.status).toBe(200);
             expect(response.body.message).toBe("updated incoming friend requests list");
             expect(response.body.incomingRequests).toEqual([
                 {friend_id: 1, username: "test1", user_id: 1},
-            {friend_id: 2, username: "test2", user_id: 2}]);
+                {friend_id: 2, username: "test2", user_id: 2}]);
         })
     });
 
     describe("GET /friends/outgoingRequests", () => {
         it("Successfully get outgoing friend requests list", async () => {
-            vi.mocked(db.execute)
-            .mockResolvedValueOnce([[
-                {friend_id: 1, username: "test1", user_id: 1},
-            {friend_id: 2, username: "test2", user_id: 2}], []] as any)
-            
+            prismaMock.friends.findMany.mockResolvedValueOnce([
+                {friend_id: 1, receiver: {user_id: 1, username: "test1"}},
+                {friend_id: 2, receiver: {user_id: 2, username: "test2"}}
+            ] as any);
+
             const response = await request(app).get('/friends/outgoingRequests/3');
 
             expect(response.status).toBe(200);
             expect(response.body.message).toBe("updated outgoing friend requests list");
             expect(response.body.outgoingRequests).toEqual([
                 {friend_id: 1, username: "test1", user_id: 1},
-            {friend_id: 2, username: "test2", user_id: 2}]);
+                {friend_id: 2, username: "test2", user_id: 2}]);
         })
     });
 

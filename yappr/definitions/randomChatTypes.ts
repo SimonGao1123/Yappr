@@ -1,28 +1,29 @@
-import type { RowDataPacket } from 'mysql2';
 import type { UsernameInChatQuery } from './chatsTypes.js';
 import type { SelectMessagesFromChat } from './messagingTypes.js';
 import type { CurrOutIncFriendsQuery } from './friendsTypes.js';
-export interface QueueUsersPool extends RowDataPacket {
+export interface QueueUsersPool {
     random_chat_user: number,
     user_id: number,
+    username: string,
 };
 
-export interface GetAvailability extends RowDataPacket {
+export interface GetAvailability {
     available: 0 | 1
 };
-export interface GetQueueSize extends RowDataPacket {
+export interface GetQueueSize {
     available_count: number
 };
-export interface GetIfInChat extends RowDataPacket {
+export interface GetIfInChat {
     chat_id: number
 };
 
-export interface GetRandomChat extends RowDataPacket {
+export interface GetRandomChat {
     chat_id: number,
+    created_at: string,
     user_id_1: number,
     user_id_2: number
 };
-export interface RandomUsersInChat extends RowDataPacket {
+export interface RandomUsersInChat {
     user_id: number,
     friend_id?: number,
     updated_at?: string,
@@ -31,7 +32,7 @@ export interface RandomUsersInChat extends RowDataPacket {
     account_created?: string,
     description?: string    
 } 
-export interface GetRandomChatWithUser extends RowDataPacket {
+export interface GetRandomChatWithUser {
     chat_id: number,
     created_at: string,
     user_id_1: number,
@@ -45,7 +46,7 @@ export type userDataType = {
     status: string,
     username: string,
     account_created: string,
-    description: string | undefined
+    description: string | null | undefined
 }
 export type chatData = {
     chat_id: number,

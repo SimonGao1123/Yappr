@@ -1,13 +1,11 @@
-import type { RowDataPacket } from 'mysql2';
-
 export type SetDescriptionInput = {
     user_id: number,
     description: string
 }
-export interface SelectDescription extends RowDataPacket {
+export interface SelectDescription {
     description: string
 }
-export interface SelectLightMode extends RowDataPacket {
+export interface SelectLightMode {
     light_mode: number
 } 
 export type SwitchLightDarkModeInput = {

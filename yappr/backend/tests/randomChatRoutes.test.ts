@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
 
-import { mockConnection } from './setup.js';
-import db from '../database.js';
+import { prismaMock } from './setup.js';
 import randomChatRouter from '../routes/randomChatRoutes.js';
 
 const app = express();
@@ -17,14 +16,10 @@ app.use(session({
 app.use('/randomChats', randomChatRouter);
 
 describe('Random Chat Routes', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   // ==================== JOIN QUEUE ====================
   describe('POST /randomChats/joinQueue', () => {
     it('should successfully join the queue', async () => {
-      vi.mocked(db.query).mockResolvedValueOnce([{ insertId: 1 }, []] as any);
+      prismaMock.randomChatPool.create.mockResolvedValueOnce({} as any);
 
       const response = await request(app)
         .post('/randomChats/joinQueue')
@@ -36,7 +31,7 @@ describe('Random Chat Routes', () => {
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.query).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.randomChatPool.create.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/randomChats/joinQueue')
@@ -51,7 +46,7 @@ describe('Random Chat Routes', () => {
   // ==================== GET RANDOM CHAT ====================
   describe('GET /randomChats/getRandomChat/:user_id', () => {
     it('should return not in queue when user is not in RandomChatPool', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .get('/randomChats/getRandomChat/1');
@@ -62,9 +57,8 @@ describe('Random Chat Routes', () => {
     });
 
     it('should return waiting status with queue size when available', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ available: 1 }], []] as any) // availability check
-        .mockResolvedValueOnce([[{ available_count: 5 }], []] as any); // queue size
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce({ available: 1 } as any);
+      prismaMock.randomChatPool.count.mockResolvedValueOnce(5);
 
       const response = await request(app)
         .get('/randomChats/getRandomChat/1');
@@ -77,14 +71,24 @@ describe('Random Chat Routes', () => {
     });
 
     it('should return chat data when matched (available=0)', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ available: 0 }], []] as any) // availability check
-        .mockResolvedValueOnce([[{ chat_id: 1, user_id_1: 1, user_id_2: 2, created_at: '2026-01-01' }], []] as any) // get chat
-        .mockResolvedValueOnce([[{ username: 'user1', description: 'desc1', joined_at: '2026-01-01' }], []] as any) // user1 data
-        .mockResolvedValueOnce([[], []] as any) // check friend status for user1
-        .mockResolvedValueOnce([[{ username: 'user2', description: 'desc2', joined_at: '2026-01-01' }], []] as any) // user2 data
-        .mockResolvedValueOnce([[], []] as any) // check friend status for user2
-        .mockResolvedValueOnce([[{ message_id: 1, sender_id: 1, message: 'Hello', username: 'user1', sent_at: '2026-01-01', askGemini: 0 }], []] as any); // messages
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce({ available: 0 } as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({
+        chat_id: 1, user_id_1: 1, user_id_2: 2, created_at: new Date('2026-01-01T00:00:00.000Z')
+      } as any);
+      prismaMock.users.findUnique
+        .mockResolvedValueOnce({ username: 'user1', description: 'desc1', joined_at: new Date('2026-01-01T00:00:00.000Z') } as any)
+        .mockResolvedValueOnce({ username: 'user2', description: 'desc2', joined_at: new Date('2026-01-01T00:00:00.000Z') } as any);
+      prismaMock.friends.findFirst
+        .mockResolvedValueOnce(null)   // friend status for user1
+        .mockResolvedValueOnce(null);  // friend status for user2
+      prismaMock.messages.findMany.mockResolvedValueOnce([{
+        askGemini: 0,
+        message_id: 1,
+        sender_id: 1,
+        message: 'Hello',
+        sent_at: new Date('2026-01-01T00:00:00.000Z'),
+        user: { username: 'user1' }
+      }] as any);
 
       const response = await request(app)
         .get('/randomChats/getRandomChat/1');
@@ -94,11 +98,20 @@ describe('Random Chat Routes', () => {
       expect(response.body.message).toBe('Successfully Obtained Random Chat');
       expect(response.body.waiting).toBe(false);
       expect(response.body.chatData).toBeDefined();
-      expect(response.body.messages).toBeDefined();
+      expect(response.body.chatData.created_at).toBe('2026-01-01T00:00:00.000Z');
+      expect(response.body.chatData.userData).toHaveLength(2);
+      expect(response.body.messages).toEqual([{
+        askGemini: 0,
+        message_id: 1,
+        sender_id: 1,
+        message: 'Hello',
+        username: 'user1',
+        sent_at: '2026-01-01T00:00:00.000Z'
+      }]);
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.randomChatPool.findFirst.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .get('/randomChats/getRandomChat/1');
@@ -122,7 +135,7 @@ describe('Random Chat Routes', () => {
     });
 
     it('should return 401 when user is not in a random chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/randomChats/sendMsgRandom')
@@ -134,7 +147,7 @@ describe('Random Chat Routes', () => {
     });
 
     it('should return 401 when sending to invalid chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ chat_id: 2, user_id_1: 1, user_id_2: 3 }], []] as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({ chat_id: 2, user_id_1: 1, user_id_2: 3 } as any);
 
       const response = await request(app)
         .post('/randomChats/sendMsgRandom')
@@ -145,9 +158,16 @@ describe('Random Chat Routes', () => {
       expect(response.body.message).toBe('Sent to invalid chat');
     });
 
-    it('should send message successfully', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ chat_id: 1, user_id_1: 1, user_id_2: 2 }], []] as any);
-      vi.mocked(db.query).mockResolvedValueOnce([{ insertId: 1 }, []] as any);
+    it('should send message successfully, flagged as a random chat message', async () => {
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({ chat_id: 1, user_id_1: 1, user_id_2: 2 } as any);
+      prismaMock.messages.create.mockResolvedValueOnce({
+        askGemini: 0,
+        message_id: 1,
+        sender_id: 1,
+        message: 'Hello there!',
+        sent_at: new Date('2026-01-01T00:00:00.000Z'),
+        user: { username: 'user1' }
+      } as any);
 
       const response = await request(app)
         .post('/randomChats/sendMsgRandom')
@@ -156,10 +176,15 @@ describe('Random Chat Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Sent message!');
+      expect(prismaMock.messages.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ random_chat: 1 })
+        })
+      );
     });
 
     it('should return 500 on database error', async () => {
-      vi.mocked(db.execute).mockRejectedValueOnce(new Error('DB Error'));
+      prismaMock.randomChats.findFirst.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/randomChats/sendMsgRandom')
@@ -184,7 +209,7 @@ describe('Random Chat Routes', () => {
     });
 
     it('should return 401 when user is not in a chat', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/randomChats/leaveRandomChat')
@@ -196,7 +221,7 @@ describe('Random Chat Routes', () => {
     });
 
     it('should return 401 when chat id does not match', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ chat_id: 5 }], []] as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({ chat_id: 5 } as any);
 
       const response = await request(app)
         .post('/randomChats/leaveRandomChat')
@@ -207,11 +232,12 @@ describe('Random Chat Routes', () => {
       expect(response.body.message).toBe('Invalid chat error');
     });
 
-    it('should leave random chat successfully', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ chat_id: 1 }], []] as any);
-      mockConnection.execute.mockResolvedValue([{}, []] as any);
-      mockConnection.beginTransaction.mockResolvedValue(undefined);
-      mockConnection.commit.mockResolvedValue(undefined);
+    it('should leave random chat successfully and free both users', async () => {
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({ chat_id: 1 } as any);
+      prismaMock.messages.deleteMany.mockResolvedValueOnce({ count: 0 });
+      prismaMock.randomChats.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.allChats.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.randomChatPool.updateMany.mockResolvedValueOnce({ count: 2 });
 
       const response = await request(app)
         .post('/randomChats/leaveRandomChat')
@@ -220,12 +246,15 @@ describe('Random Chat Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('successfully left chat');
+      expect(prismaMock.$transaction).toHaveBeenCalled();
+      expect(prismaMock.randomChatPool.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { available: 1 } })
+      );
     });
 
-    it('should return 500 on database error and rollback', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ chat_id: 1 }], []] as any);
-      mockConnection.beginTransaction.mockImplementation(() => { throw new Error('Transaction Error'); });
-      mockConnection.rollback.mockResolvedValue(undefined);
+    it('should return 500 when the transaction fails', async () => {
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({ chat_id: 1 } as any);
+      (prismaMock.$transaction as any).mockRejectedValueOnce(new Error('Transaction Error'));
 
       const response = await request(app)
         .post('/randomChats/leaveRandomChat')
@@ -240,7 +269,7 @@ describe('Random Chat Routes', () => {
   // ==================== LEAVE QUEUE ====================
   describe('POST /randomChats/leaveQueue', () => {
     it('should return 401 when user is not in queue', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[], []] as any);
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/randomChats/leaveQueue')
@@ -252,8 +281,8 @@ describe('Random Chat Routes', () => {
     });
 
     it('should remove user from pool when available', async () => {
-      vi.mocked(db.execute).mockResolvedValueOnce([[{ available: 1 }], []] as any);
-      vi.mocked(db.query).mockResolvedValueOnce([{ affectedRows: 1 }, []] as any);
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce({ available: 1 } as any);
+      prismaMock.randomChatPool.deleteMany.mockResolvedValueOnce({ count: 1 });
 
       const response = await request(app)
         .post('/randomChats/leaveQueue')
@@ -265,13 +294,13 @@ describe('Random Chat Routes', () => {
     });
 
     it('should delete chat and remove from queue when not available', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ available: 0 }], []] as any) // queue status
-        .mockResolvedValueOnce([[{ chat_id: 1, user_id_1: 1, user_id_2: 2 }], []] as any); // get chat
-      
-      mockConnection.beginTransaction.mockResolvedValue(undefined);
-      mockConnection.execute.mockResolvedValue([{}, []] as any);
-      mockConnection.commit.mockResolvedValue(undefined);
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce({ available: 0 } as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({ chat_id: 1, user_id_1: 1, user_id_2: 2 } as any);
+      prismaMock.messages.deleteMany.mockResolvedValueOnce({ count: 0 });
+      prismaMock.randomChats.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.allChats.deleteMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.randomChatPool.updateMany.mockResolvedValueOnce({ count: 1 });
+      prismaMock.randomChatPool.deleteMany.mockResolvedValueOnce({ count: 1 });
 
       const response = await request(app)
         .post('/randomChats/leaveQueue')
@@ -280,12 +309,15 @@ describe('Random Chat Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('user successfully removed from queue');
+      // only the *other* user is freed back into the pool
+      expect(prismaMock.randomChatPool.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { user_id: 2 }, data: { available: 1 } })
+      );
     });
 
     it('should return 401 when chat retrieval fails', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ available: 0 }], []] as any)
-        .mockResolvedValueOnce([[], []] as any); // no chat found
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce({ available: 0 } as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce(null); // no chat found
 
       const response = await request(app)
         .post('/randomChats/leaveQueue')
@@ -296,13 +328,10 @@ describe('Random Chat Routes', () => {
       expect(response.body.message).toBe('Random Chat retreival error');
     });
 
-    it('should return 500 on database error and rollback', async () => {
-      vi.mocked(db.execute)
-        .mockResolvedValueOnce([[{ available: 0 }], []] as any)
-        .mockResolvedValueOnce([[{ chat_id: 1, user_id_1: 1, user_id_2: 2 }], []] as any);
-      
-      mockConnection.beginTransaction.mockImplementation(() => { throw new Error('Transaction Error'); });
-      mockConnection.rollback.mockResolvedValue(undefined);
+    it('should return 500 when the transaction fails', async () => {
+      prismaMock.randomChatPool.findFirst.mockResolvedValueOnce({ available: 0 } as any);
+      prismaMock.randomChats.findFirst.mockResolvedValueOnce({ chat_id: 1, user_id_1: 1, user_id_2: 2 } as any);
+      (prismaMock.$transaction as any).mockRejectedValueOnce(new Error('Transaction Error'));
 
       const response = await request(app)
         .post('/randomChats/leaveQueue')

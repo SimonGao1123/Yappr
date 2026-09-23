@@ -1,6 +1,5 @@
-import type { ResultSetHeader } from "mysql2";
 import type { QueueUsersPool } from "../../definitions/randomChatTypes.js";
-import db from '../database.js';
+import prisma from '../prisma.js';
 
 export function startChatMatcher() {
   async function loop() {
@@ -18,20 +17,19 @@ export function startChatMatcher() {
 
 // function that constantly runs and creates chats based on people in the queue
 async function createChat() {
-  const conn = await db.getConnection();
-
-  try {
-    await conn.beginTransaction(); // not permanent database queries yet
-
-    // Lock rows so no other matcher can grab them
-    const [userPool] = await conn.query<QueueUsersPool[]>(
-      `
+  // Interactive transaction: the row lock below must be held across every write
+  // in the loop. The default 5s timeout is too tight once several pairs are
+  // matched in one tick, so it is raised explicitly.
+  await prisma.$transaction(async (tx) => {
+    // Lock rows so no other matcher can grab them. Prisma's query API cannot
+    // express FOR UPDATE, so this stays raw — and it must run on `tx`, not the
+    // root client, or it would take a different connection and lock nothing.
+    const userPool = await tx.$queryRaw<QueueUsersPool[]>`
       SELECT r.random_chat_user, r.user_id, u.username
       FROM RandomChatPool r JOIN Users u ON r.user_id = u.user_id
       WHERE available = TRUE
       FOR UPDATE
-      `
-    ); // for means no changes can be made to table before this is completed
+    `; // for means no changes can be made to table before this is completed
 
     for (let i = 0; i + 1 < userPool.length; i += 2) {
       const u1 = userPool[i];
@@ -40,35 +38,27 @@ async function createChat() {
         continue;
       }
       // create chat
-      const [chatId] = await conn.execute<ResultSetHeader>(
-        'INSERT INTO AllChats (if_random) VALUES (TRUE)'
-      ); // insert a random chat
-      await conn.query(
-        'INSERT INTO RandomChats (chat_id, user_id_1, user_id_2) VALUES (?, ?, ?)',
-        [chatId.insertId, u1!.user_id, u2!.user_id]
-      );
+      const allChat = await tx.allChats.create({
+        data: {if_random: 1}
+      }); // insert a random chat
+      await tx.randomChats.create({
+        data: {chat_id: allChat.chat_id, user_id_1: u1.user_id, user_id_2: u2.user_id}
+      });
       // send beginning message
-      await conn.query(
-        'INSERT INTO Messages (chat_id, sender_id, message, random_chat) VALUES (?, -1, ?, 1)',
-        [chatId.insertId, `Start of chat with ${u1.username} and ${u2.username}`]
-      )
+      await tx.messages.create({
+        data: {
+          chat_id: allChat.chat_id,
+          sender_id: -1,
+          message: `Start of chat with ${u1.username} and ${u2.username}`,
+          random_chat: 1
+        }
+      });
 
       // mark both users unavailable
-      await conn.query(
-        `
-        UPDATE RandomChatPool
-        SET available = FALSE
-        WHERE random_chat_user=? OR random_chat_user=?
-        `,
-        [u1!.random_chat_user, u2!.random_chat_user]
-      );
+      await tx.randomChatPool.updateMany({
+        where: {random_chat_user: {in: [u1.random_chat_user, u2.random_chat_user]}},
+        data: {available: 0}
+      });
     }
-
-    await conn.commit(); // commit when its all passed (makes it permenant)
-  } catch (err) {
-    await conn.rollback(); // if something fails rollback the changes!!!
-    throw err;
-  } finally {
-    conn.release();
-  }
+  }, {timeout: 20000, maxWait: 5000});
 }

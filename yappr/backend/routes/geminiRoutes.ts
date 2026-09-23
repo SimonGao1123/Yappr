@@ -1,14 +1,14 @@
 import express from 'express';
-import db from '../database.js';
+import prisma from '../prisma.js';
 import type {Request, Response} from 'express';
 import { getIO } from '../socketInstance.js';
-import mysql from 'mysql2/promise';
+import { messageSelect, toSocketPayload } from '../messagePayload.js';
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv"; // to get api key
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { SelectChatUsers, PromptGeminiInput } from '../../definitions/messagingTypes.js';
+import type { PromptGeminiInput } from '../../definitions/messagingTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,34 +28,25 @@ router.post("/prompt", async (req:Request<{},{},PromptGeminiInput>, res:Response
 
     try {
         // check if user is in the chat
-        const [ifRandChat] = await db.execute<any>(
-            'SELECT * FROM RandomChats WHERE chat_id=? AND (user_id_1=? OR user_id_2=?)'
-            , [chat_id, user_id, user_id]
-        )
-        const [rows] = await db.execute<SelectChatUsers[]>(
-            'SELECT * FROM Chat_Users WHERE chat_id=? AND user_id=?',
-            [chat_id, user_id]
-        );
-        if (ifRandChat.length === 0 && rows.length === 0) {
+        const randChat = await prisma.randomChats.findFirst({
+            where: {chat_id, OR: [{user_id_1: user_id}, {user_id_2: user_id}]}
+        });
+        const membership = await prisma.chat_Users.findFirst({
+            where: {chat_id, user_id}
+        });
+        if (!randChat && !membership) {
             // user is not in chat
             return res.status(401).json({success: false, message: "User is not in the chat"});
         }
 
-        const [promptInsert] = await db.query(
-            'INSERT INTO Messages (chat_id, sender_id, message, askGemini, random_chat) VALUES (?, ?, ?, TRUE, ?)',
-            [chat_id, user_id, prompt, ifRandChat.length === 0 ? 0 : 1]
-        );
+        const isRandom = randChat ? 1 : 0;
+
+        const promptRow = await prisma.messages.create({
+            data: {chat_id, sender_id: user_id, message: prompt, askGemini: 1, random_chat: isRandom},
+            select: messageSelect
+        });
         // Emit the user's prompt message immediately (before AI responds)
-        const promptId = (promptInsert as any).insertId;
-        const [promptRows] = await db.execute<any[]>(
-            `SELECT m.message_id, m.sender_id, m.message,
-                    IFNULL(u.username, 'Gemini') AS username, m.sent_at, m.askGemini
-             FROM Messages m LEFT JOIN Users u ON u.user_id=m.sender_id WHERE m.message_id=?`,
-            [promptId]
-        );
-        if (promptRows.length > 0) {
-            try { getIO().to(`chat:${chat_id}`).emit('new-message', promptRows[0]); } catch {}
-        }
+        try { getIO().to(`chat:${chat_id}`).emit('new-message', toSocketPayload(promptRow)); } catch {}
 
         const model = genAI.getGenerativeModel({model: "gemma-3-4b-it"});
 
@@ -72,20 +63,24 @@ User Question: ${prompt}`;
         const result = await model.generateContent(systemPrompt);
         const text = result.response.text();
 
-        const [aiInsert] = await db.query(
-            "INSERT INTO Messages (chat_id, sender_id, message, askGemini, random_chat) VALUES(?,?,?,TRUE, ?)",
-            [chat_id, -1, `Gemini Response to ${username}'s prompt: ${text}`, ifRandChat.length === 0 ? 0 : 1]
-        );
-        // Emit the Gemini response (sender_id=-1, no matching Users row, username='Gemini')
-        const aiId = (aiInsert as any).insertId;
-        const [aiRows] = await db.execute<any[]>(
-            `SELECT message_id, sender_id, message, 'Gemini' AS username, sent_at, askGemini
-             FROM Messages WHERE message_id=?`,
-            [aiId]
-        );
-        if (aiRows.length > 0) {
-            try { getIO().to(`chat:${chat_id}`).emit('new-message', aiRows[0]); } catch {}
-        }
+        const aiRow = await prisma.messages.create({
+            data: {
+                chat_id,
+                sender_id: -1,
+                message: `Gemini Response to ${username}'s prompt: ${text}`,
+                askGemini: 1,
+                random_chat: isRandom
+            },
+            select: messageSelect
+        });
+        // sender_id=-1 resolves to the seeded "server" user, but this emit has
+        // always labelled the AI reply 'Gemini' regardless — keep that.
+        try {
+            getIO().to(`chat:${chat_id}`).emit('new-message', {
+                ...toSocketPayload(aiRow),
+                username: 'Gemini'
+            });
+        } catch {}
 
         res.status(200).json({success: true, message: "Prompt successfully processed"});
     } catch(err) {

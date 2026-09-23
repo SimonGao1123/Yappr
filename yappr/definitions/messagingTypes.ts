@@ -1,11 +1,9 @@
-import type { RowDataPacket } from 'mysql2';
-
 export type SendMessageInput = {
     chat_id: number,
     message: string, 
     user_id: number
 }
-export interface SelectChatUsers extends RowDataPacket {
+export interface SelectChatUsers {
     chat_user_id: number,
     chat_id: number,
     user_id: number,
@@ -18,18 +16,18 @@ export type DeleteMessageInput = {
     sender_id: number, 
     chat_id: number
 }
-export interface SelectIfMessageExists extends RowDataPacket {
+export interface SelectIfMessageExists {
     sender_id: number, 
     chat_id: number, 
     deleted: number
 }
-export interface GetAllChatsMessages extends RowDataPacket {
+export interface GetAllChatsMessages {
     chat_id: number
 }
-export interface GetAllMessageId extends RowDataPacket {
+export interface GetAllMessageId {
     message_id: number
 }
-export interface SelectMessagesFromChat extends RowDataPacket {
+export interface SelectMessagesFromChat {
     askGemini: number,
     message_id: number,
     sender_id: number,

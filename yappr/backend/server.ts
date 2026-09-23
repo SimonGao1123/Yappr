@@ -13,8 +13,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { Server } from 'socket.io';
 
-import MySQLStoreFactory from 'express-mysql-session';
-import pool from './database.js';
+import { PrismaSessionStore } from '@quixo3/prisma-session-store';
+import prisma from './prisma.js';
 
 import userLoginRouter from './routes/userLogin.js';
 import friendsRouter from './routes/friendsRoutes.js';
@@ -39,25 +39,13 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// ---------- Session store (MySQL) ----------
-const MySQLStore = MySQLStoreFactory(session as any);
-const sessionStore = new MySQLStore(
-  {
-    clearExpired: true,
-    checkExpirationInterval: 900000,
-    expiration: 86400000,
-    createDatabaseTable: true,
-    schema: {
-      tableName: 'sessions',
-      columnNames: {
-        session_id: 'session_id',
-        expires: 'expires',
-        data: 'data',
-      },
-    },
-  },
-  pool as any
-);
+// ---------- Session store (Prisma) ----------
+const sessionStore = new PrismaSessionStore(prisma as any, {
+  checkPeriod: 900000,   // was checkExpirationInterval
+  ttl: 86400000,         // was expiration
+  dbRecordIdIsSessionId: true,
+  logger: false,
+});
 
 // ---------- Session config ----------
 const sessionMiddleware = session({

@@ -10,6 +10,7 @@ backend/.env.*
 *.log
 .DS_Store
 backend/public
+backend/generated
 coverage
 .vitest
 *.md
