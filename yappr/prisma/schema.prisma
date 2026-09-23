@@ -13,11 +13,13 @@
 // │  2. `prisma db pull` overwrites rule 1. After any re-introspection,       │
 // │     re-apply the TinyInt types before generating.                         │
 // │                                                                           │
-// │ Still unverified: the DDL names the chat_id foreign key `fk_chat_id` on   │
-// │ BOTH Chats and Chat_Users, which MySQL cannot accept — constraint names   │
-// │ are unique per database. One of them is actually named something else     │
-// │ live. FK names do not affect queries, only migrations, so this only has   │
-// │ to be settled before generating the cascade migration.                    │
+// │ The source DDL named the chat_id foreign key `fk_chat_id` on BOTH Chats   │
+// │ and Chat_Users, which MySQL rejects — constraint names are unique per      │
+// │ database. Chat_Users' is renamed `fk_chat_users_chat_id` here.            │
+// │                                                                           │
+// │ The four chat-ownership FKs are ON DELETE CASCADE, so deleting an         │
+// │ AllChats row clears the chat, its members and its messages. The routes    │
+// │ still issue explicit ordered deletes, which stay correct either way.      │
 // └───────────────────────────────────────────────────────────────────────────┘
 
 generator client {
@@ -89,7 +91,7 @@ model Chats {
   chat_name  String   @db.VarChar(30)
 
   // ties the group chat to its id allocation
-  all_chat AllChats @relation(fields: [chat_id], references: [chat_id], map: "fk_chat_id")
+  all_chat AllChats @relation(fields: [chat_id], references: [chat_id], map: "fk_chat_id", onDelete: Cascade)
   creator  Users    @relation("ChatCreator", fields: [creator_id], references: [user_id], map: "fk_chat_creator")
   members  Chat_Users[]
 
@@ -104,7 +106,7 @@ model Chat_Users {
   joined_at            DateTime @default(now()) @db.Timestamp(0)
   last_seen_message_id Int      @default(0)
 
-  chat Chats @relation(fields: [chat_id], references: [chat_id])
+  chat Chats @relation(fields: [chat_id], references: [chat_id], map: "fk_chat_users_chat_id", onDelete: Cascade)
   user Users @relation(fields: [user_id], references: [user_id], map: "fk_chat_user_id")
 
   @@index([chat_id], map: "fk_chat_id")
@@ -124,7 +126,7 @@ model Messages {
 
   // points at allchats, not chats: chatMatcher.ts writes messages for random
   // chats, whose chat_id exists only in allchats
-  chat AllChats @relation(fields: [chat_id], references: [chat_id], map: "fk_msgs_chat_id")
+  chat AllChats @relation(fields: [chat_id], references: [chat_id], map: "fk_msgs_chat_id", onDelete: Cascade)
   // sender_id -1 is a real seeded row (username "server"), so this is required.
   user Users    @relation(fields: [sender_id], references: [user_id], map: "fk_sender_id")
 
@@ -151,7 +153,7 @@ model RandomChats {
   user_id_1  Int      @unique
   user_id_2  Int      @unique
 
-  all_chat AllChats       @relation(fields: [chat_id], references: [chat_id], map: "fk_random_chat_id")
+  all_chat AllChats       @relation(fields: [chat_id], references: [chat_id], map: "fk_random_chat_id", onDelete: Cascade)
   user_1   RandomChatPool @relation("RandomChatUser1", fields: [user_id_1], references: [user_id], map: "fk_random_user_1")
   user_2   RandomChatPool @relation("RandomChatUser2", fields: [user_id_2], references: [user_id], map: "fk_random_user_2")
 
