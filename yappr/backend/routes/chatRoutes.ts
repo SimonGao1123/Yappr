@@ -3,9 +3,25 @@ import prisma from '../prisma.js';
 import type {Request, Response} from 'express';
 import type{ CreateChatInput, LeaveChatInput, DeleteChatInput, AddToChatInput, AddToChatResponse, KickUserInput, EditChatNameInput, CurrChat, AllUsersInChatQuery, GetChatsResponse } from '../../definitions/chatsTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
+import { notifyChatsChanged } from '../socketInstance.js';
 
 
 const router = express.Router();
+
+// Push a chat-list refresh to everyone in a chat. Best-effort: a push failure
+// must never fail the mutation that triggered it. `extra` covers users who were
+// just removed from the membership table and so no longer appear in the query.
+async function notifyChatMembers(chat_id: number, extra: Array<number | null | undefined> = []) {
+    try {
+        const members = await prisma.chat_Users.findMany({
+            where: {chat_id},
+            select: {user_id: true}
+        });
+        notifyChatsChanged([...members.map((m) => m.user_id), ...extra]);
+    } catch {
+        // ignore
+    }
+}
 
 // Thrown inside createChat's transaction so a failed validation rolls back the
 // rows already written instead of leaving an orphaned chat behind.
@@ -23,11 +39,13 @@ router.post("/createChat", async (req: Request<{},{},CreateChatInput>, res: Resp
     if (!creator_id) return res.status(401).json({success: false, message: "Invalid creator id"});
     if (!chat_name) return res.status(401).json({success: false, message: "Invalid chat name"});
     if (addedFriends.length === 0) return res.status(401).json({success: false, message: "Cannot make a chat by yourself"});
+    let newChatId: number | null = null;
     try {
         await prisma.$transaction(async (tx) => {
             // AllChats allocates the chat_id shared by group chats and random chats
             const allChat = await tx.allChats.create({data: {}});
             const insertedId = allChat.chat_id;
+            newChatId = insertedId;
 
             await tx.chats.create({
                 data: {chat_id: insertedId, creator_id, chat_name}
@@ -63,6 +81,7 @@ router.post("/createChat", async (req: Request<{},{},CreateChatInput>, res: Resp
             });
         });
 
+        if (newChatId !== null) await notifyChatMembers(newChatId);
         return res.status(201).json({success: true, message: `Successfully created ${chat_name}`})
 
     } catch (err) {
@@ -96,6 +115,7 @@ router.post("/leaveChat", async (req: Request<{},{},LeaveChatInput>, res: Respon
                 prisma.allChats.deleteMany({where: {chat_id}})
             ]);
 
+            notifyChatsChanged([user_id]);
             return res.status(201).json({success: true, message: "Successfully deleted group"});
         }
         // check if user is leader, then pass on leadership
@@ -118,6 +138,7 @@ router.post("/leaveChat", async (req: Request<{},{},LeaveChatInput>, res: Respon
             await prisma.messages.create({
                 data: {chat_id, sender_id: -1, message: `${username} has left, ${newLeader!.username} is the new leader`}
             });
+            await notifyChatMembers(chat_id, [user_id]);
             return res.status(201).json({success: true, message: `${username} has left the chat, ${newLeader!.username} is the new leader`});
         }
 
@@ -129,6 +150,7 @@ router.post("/leaveChat", async (req: Request<{},{},LeaveChatInput>, res: Respon
         await prisma.messages.create({
             data: {chat_id, sender_id: -1, message: `${username} has left the chat`}
         });
+        await notifyChatMembers(chat_id, [user_id]);
         return res.status(201).json({success: true, message: `${username} has left the chat`});
 
     } catch (err) {
@@ -144,12 +166,18 @@ router.post("/deleteChat", async (req: Request<{},{},DeleteChatInput>, res: Resp
     if (user_id !== creator_id) return res.status(401).json({success: false, message: "User is not the creator"});
 
     try {
+        // membership has to be read before the rows are removed
+        const members = await prisma.chat_Users.findMany({
+            where: {chat_id},
+            select: {user_id: true}
+        });
         await prisma.$transaction([
             prisma.messages.deleteMany({where: {chat_id}}),
             prisma.chat_Users.deleteMany({where: {chat_id}}),
             prisma.chats.deleteMany({where: {chat_id}}),
             prisma.allChats.deleteMany({where: {chat_id}})
         ]);
+        notifyChatsChanged(members.map((m) => m.user_id));
         return res.status(201).json({success: true, message: "Successfully deleted chat"});
     } catch (err) {
         console.log(err);
@@ -349,6 +377,7 @@ router.post("/addToChat", async (req: Request<{},{},AddToChatInput>, res: Respon
         await prisma.messages.create({
             data: {chat_id, sender_id: -1, message: `${username} has added: ${compressedUsernameList} to the chat`}
         });
+        await notifyChatMembers(chat_id);
         return res.status(201).json({success: true, message: finalMessage});
         // note if success is true then message will be an array
 
@@ -386,6 +415,7 @@ router.post("/kick", async (req: Request<{},{},KickUserInput>, res: Response<sta
         await prisma.messages.create({
             data: {chat_id, sender_id: -1, message: `${user_username} has kicked ${kicked_username} from the chat`}
         });
+        await notifyChatMembers(chat_id, [kicked_id]);
         return res.status(201).json({success: true, message: `${kicked_username} was kicked by ${user_username}`});
     } catch (err) {
         console.log(err);
@@ -413,6 +443,7 @@ router.post("/editChatName", async (req: Request<{},{},EditChatNameInput>, res: 
         await prisma.messages.create({
             data: {chat_id, sender_id: -1, message: `${username} changed the chat name to ${newChatName}`}
         });
+        await notifyChatMembers(chat_id);
         return res.status(201).json({success: true, message: "Successfully changed chat name"});
     } catch (err) {
         console.log(err);

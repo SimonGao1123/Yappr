@@ -4,7 +4,9 @@ import './Settings.css';
 
 import type { UpdateUsernameProp, ThemeToggleProp, AlterDescriptionProps, SettingsProps } from '../../definitions/settingsTypes.ts';
 import type { standardResponse } from '../../definitions/globalType.js';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { errorMessage, postJson, fetchJson } from '../data/http.js';
+import { showToast } from '../ui/Toast.js';
 
 function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser, ifLightMode, setIfLightMode}: SettingsProps) {
     const navigate = useNavigate();
@@ -16,69 +18,69 @@ function Settings ({setCurrentUser, setLoginStatus, setDisplayIndex, currentUser
     };
 
     return (
-        <main id="settings-main" className={!ifLightMode?"dark-mode":""}>
+        <main id="settings-main">
             <UpdateUsername setCurrentUser={setCurrentUser} currentUser={currentUser} ifLightMode={ifLightMode}/>
             <AlterDescription currentUser={currentUser} ifLightMode={ifLightMode}/>
 
             <ThemeToggle ifLightMode={ifLightMode} setIfLightMode={setIfLightMode} currentUser={currentUser}/>
             
-            <button onClick={handleLogout} id="logout-btn" className={!ifLightMode?"dark-mode":""}>Logout</button>
+            <button onClick={handleLogout} id="logout-btn">Logout</button>
         </main>
     );
 }
 function UpdateUsername ({currentUser, ifLightMode, setCurrentUser}: UpdateUsernameProp) {
     const [displayMsg, setDisplayMsg] = useState("");
     const [newUsername, setNewUsername] = useState(currentUser.username);
+    const [saving, setSaving] = useState(false);
 
     return (
 
-        <div className={!ifLightMode?"dark-mode":""} id="update-username-section">
-            <h2 className={!ifLightMode?"dark-mode":""}>Update Username</h2>
-            <input className={!ifLightMode?"dark-mode":""} id="update-username-input" type='text' maxLength={30} value={newUsername} onChange={(e) => setNewUsername(e.target.value)}/>
-            <button id="update-username-btn" onClick={() => updateUsernameFunction(currentUser, currentUser.id, newUsername, setDisplayMsg, setCurrentUser)}>Update</button>
+        <div id="update-username-section">
+            <h2>Update Username</h2>
+            <label className="sr-only" htmlFor="update-username-input">New username</label>
+            <input id="update-username-input" type='text' maxLength={30} value={newUsername} onChange={(e) => setNewUsername(e.target.value)}/>
+            <button id="update-username-btn" disabled={saving || !newUsername.trim() || newUsername === currentUser.username} onClick={async () => {
+                setSaving(true);
+                try { await updateUsernameFunction(currentUser, currentUser.id, newUsername, setDisplayMsg, setCurrentUser); }
+                finally { setSaving(false); }
+            }}>{saving ? "Saving…" : "Update"}</button>
             <p id="display-msg-update-username-input">{displayMsg}</p>
         </div>
     );
 }
-function updateUsernameFunction(currentUser: {username: string, id: number}, user_id: number, newUsername: string, setDisplayMsg: (value: string)=> void, setCurrentUser: (value: {username: string, id: number})=> void) {
-    fetch("/api/userLogins/updateUsername", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        credentials: "include",
-        body: JSON.stringify({username: currentUser.username, user_id, newUsername})
-    }).then(async res => {
-        const parsed: standardResponse = await res.json();
+async function updateUsernameFunction(currentUser: {username: string, id: number}, user_id: number, newUsername: string, setDisplayMsg: (value: string)=> void, setCurrentUser: (value: {username: string, id: number})=> void) {
+    try {
+        const parsed = await postJson<standardResponse>("/api/userLogins/updateUsername", {username: currentUser.username, user_id, newUsername});
         setDisplayMsg(parsed.message);
         if (parsed.success && parsed.user) {
             setCurrentUser(parsed.user);
         }
-        console.log(parsed);
-    }).catch(err => {
-        console.log(err);
-    });
+    } catch (err) {
+        setDisplayMsg(errorMessage(err));
+    }
 }
 function ThemeToggle ({ifLightMode, setIfLightMode, currentUser}: ThemeToggleProp) {
     if (!currentUser) return null;
     
     return (
-        <div id="light-mode-toggle" className={!ifLightMode?"dark-mode":""}>
-            <h2 className={!ifLightMode?"dark-mode":""}>Theme</h2>
+        <div id="light-mode-toggle">
+            <h2>Theme</h2>
             <div id="theme-options">
-                <label htmlFor="dark-mode-radio" className={!ifLightMode?"dark-mode":""}>
+                <label htmlFor="dark-mode-radio">
                     <input 
-                        type="radio" 
-                        id="dark-mode-radio" 
-                        className={!ifLightMode?"dark-mode":""} 
+                        type="radio"
+                        name="theme"
+                        id="dark-mode-radio"
                         checked={!ifLightMode} 
                         onChange={() => setLightDarkMode(setIfLightMode, false, currentUser.id)}
                     />
                     Dark Mode
                 </label>
-                <label htmlFor="light-mode-radio" className={!ifLightMode?"dark-mode":""}>
+                <label htmlFor="light-mode-radio">
                     <input 
-                        type="radio" 
-                        id="light-mode-radio" 
-                        className={!ifLightMode?"dark-mode":""} 
+                        type="radio"
+                        name="theme"
+                        id="light-mode-radio"
                         checked={ifLightMode} 
                         onChange={() => setLightDarkMode(setIfLightMode, true, currentUser.id)}
                     />
@@ -89,18 +91,15 @@ function ThemeToggle ({ifLightMode, setIfLightMode, currentUser}: ThemeTogglePro
     );
 }
 
-function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode: boolean, user_id: number) {
-    fetch("/api/settings/switchLightDarkMode", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ifLightMode, user_id})
-    }).then(async res => {
-        const parsed: standardResponse = await res.json();
-        console.log(parsed);
-    }).catch(err => {
-        console.log(err);
-    });
+async function setLightDarkMode (setIfLightMode: (value: boolean) => void, ifLightMode: boolean, user_id: number) {
+    // apply straight away, undo if the server rejects it
     setIfLightMode(ifLightMode);
+    try {
+        await postJson<standardResponse>("/api/settings/switchLightDarkMode", {ifLightMode, user_id});
+    } catch (err) {
+        setIfLightMode(!ifLightMode);
+        showToast(errorMessage(err));
+    }
 }
 
 async function logOutFunction (setCurrentUser: (value: {username: string, id: number} | null)=> void, setLoginStatus: (value: boolean)=> void, setDisplayIndex: (value: number)=> void, id: number) {
@@ -131,39 +130,29 @@ async function logOutFunction (setCurrentUser: (value: {username: string, id: nu
 function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {
     const [description, setDescription] = useState("");
     const [displayMsg, setDisplayMsg] = useState("");
+    const [saving, setSaving] = useState(false);
 
-    function updateDescription () {
+    async function updateDescription () {
         if (!currentUser) return;
-        fetch("/api/settings/setDescription", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({user_id: currentUser.id, description})
-        }
-        ).then(async res => {
-            const parsed: standardResponse = await res.json();
+        setSaving(true);
+        try {
+            const parsed = await postJson<standardResponse>("/api/settings/setDescription", {user_id: currentUser.id, description});
             setDisplayMsg(parsed.message);
-        }).catch(err => {
-            console.log(err);
-        }) 
+        } catch (err) {
+            setDisplayMsg(errorMessage(err));
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function getDescription () {
+    async function getDescription () {
         if (!currentUser) return;
-        fetch(`/api/settings/getDescription/${currentUser.id}`, {
-            method: "GET"
+        try {
+            const parsed = await fetchJson<standardResponse>(`/api/settings/getDescription/${currentUser.id}`);
+            if (parsed.success && parsed.desc) setDescription(parsed.desc);
+        } catch (err) {
+            showToast(errorMessage(err));
         }
-        ).then(async res => {
-            const parsed: standardResponse = await res.json();
-            if (!parsed.success) {
-                console.log(parsed.message);
-                return;
-            }
-            if (parsed.desc) {
-                setDescription(parsed.desc);
-            }
-        }).catch(err => {
-            console.log(err);
-        })
     }
 
     useEffect(() => {
@@ -172,11 +161,12 @@ function AlterDescription ({currentUser, ifLightMode}: AlterDescriptionProps) {
     }, [currentUser?.id]);
 
     return (
-        <div id="description-alter-section" className={!ifLightMode?"dark-mode":""}>
-            <h2 className={!ifLightMode?"dark-mode":""}>Update Description</h2>
-            <textarea placeholder='Description' id="description" className={!ifLightMode?"dark-mode":""} value={description} onChange={(e) => setDescription(e.target.value)}/>
-            <button id="update-description-btn" className={!ifLightMode?"dark-mode":""} onClick={() => updateDescription()}>Update</button>
-            <p id="display-description-msg" className={!ifLightMode?"dark-mode":""}>{displayMsg}</p>
+        <div id="description-alter-section">
+            <h2>Update Description</h2>
+            <label className="sr-only" htmlFor="description">Profile description</label>
+            <textarea placeholder='Description' id="description" value={description} onChange={(e) => setDescription(e.target.value)}/>
+            <button id="update-description-btn" disabled={saving} onClick={() => updateDescription()}>{saving ? "Saving…" : "Update"}</button>
+            <p id="display-description-msg">{displayMsg}</p>
         </div>
     );
 }

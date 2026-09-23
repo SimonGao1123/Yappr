@@ -1,3 +1,4 @@
+import type React from 'react';
 export type SendMessageInput = {
     chat_id: number,
     message: string, 
@@ -64,7 +65,7 @@ export type SendMessageInputProp = {
     currentUser: {username: string, id: number}, 
     chat_id: number, 
     ifLightMode: boolean
-    setMessageData: (value: SelectMessagesFromChat[]) => void;
+    setMessageData: React.Dispatch<React.SetStateAction<SelectMessagesFromChat[]>>;
 }
 export type PromptGeminiInput = {
     prompt: string, 

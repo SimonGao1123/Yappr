@@ -1,0 +1,116 @@
+/* Single source of truth for color, spacing, type and elevation.
+   Themes switch via data-theme on <html>, set in App.tsx. Never hardcode a
+   color in a component stylesheet — add a token here instead. */
+
+:root {
+  /* Brand. Orange is the primary action color across the whole app. */
+  --brand-100: #fff0e6;
+  --brand-200: #ffd9bf;
+  --brand-500: #e8590c;
+  --brand-600: #d14d06;
+  --brand-700: #b84004;
+  --focus-ring: 0 0 0 3px rgba(232, 89, 12, 0.35);
+
+  /* Surfaces. Warm off-white rather than pure #fff so the orange doesn't glare. */
+  --bg-app: #faf7f5;
+  --bg-surface: #ffffff;
+  --bg-raised: #f4f0ed;
+  --bg-sunken: #efeae6;
+  --bg-overlay: rgba(28, 25, 23, 0.45);
+
+  /* Text */
+  --text-1: #1f2937;
+  --text-2: #57534e;
+  --text-3: #8a8280;
+  --text-on-brand: #ffffff;
+
+  /* Borders */
+  --border-1: #e3dcd7;
+  --border-2: #cfc6c0;
+
+  /* Semantic. Roles are unchanged from before, values retuned to sit beside orange. */
+  --danger: #dc2626;
+  --danger-600: #b91c1c;
+  --danger-bg: #fef2f2;
+  --success: #16a34a;
+  --success-600: #15803d;
+  --success-bg: #f0fdf4;
+  --info: #2563eb;
+
+  /* Message bubbles */
+  --bubble-them: #f1ebe6;
+  --bubble-you: var(--brand-100);
+  --bubble-ai-from: #f59e0b;
+  --bubble-ai-to: #e8590c;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(28, 25, 23, 0.06);
+  --shadow-2: 0 4px 12px rgba(28, 25, 23, 0.1);
+  --shadow-3: 0 12px 32px rgba(28, 25, 23, 0.16);
+
+  /* Type */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;
+
+  --transition: 150ms ease;
+}
+
+[data-theme="dark"] {
+  /* Warm near-black, not #000 — keeps the orange from looking radioactive. */
+  --bg-app: #17151a;
+  --bg-surface: #201d24;
+  --bg-raised: #2a262f;
+  --bg-sunken: #131116;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+
+  --text-1: #ede9e6;
+  --text-2: #b5ada8;
+  --text-3: #857d79;
+
+  --border-1: #332e38;
+  --border-2: #443d4a;
+
+  /* Brand lightens on dark so contrast against the surface still holds. */
+  --brand-100: #3a2415;
+  --brand-200: #5c3a1f;
+  --brand-500: #ff8a4c;
+  --brand-600: #ff7433;
+  --brand-700: #e8590c;
+  --focus-ring: 0 0 0 3px rgba(255, 138, 76, 0.35);
+  --text-on-brand: #1a1013;
+
+  --danger: #f87171;
+  --danger-600: #ef4444;
+  --danger-bg: #2a1a1a;
+  --success: #4ade80;
+  --success-600: #22c55e;
+  --success-bg: #14241a;
+  --info: #60a5fa;
+
+  --bubble-them: #2a262f;
+  --bubble-you: #3a2415;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.6);
+}

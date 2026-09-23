@@ -198,6 +198,11 @@ describe('Chat Routes', () => {
     });
 
     it('should delete chat successfully when user is creator', async () => {
+      // membership is read before the deletes so the socket push can reach
+      // members who are about to be removed
+      prismaMock.chat_Users.findMany.mockResolvedValueOnce([
+        { user_id: 1 }, { user_id: 2 },
+      ] as any);
       prismaMock.messages.deleteMany.mockResolvedValueOnce({ count: 0 });
       prismaMock.chat_Users.deleteMany.mockResolvedValueOnce({ count: 1 });
       prismaMock.chats.deleteMany.mockResolvedValueOnce({ count: 1 });

@@ -1,0 +1,318 @@
+/* Shared primitives. Previously each page restyled its own buttons, cards,
+   inputs, modals and scrollbars, which is why accept was cyan on one page and
+   green on another. Everything points here now. */
+
+/* ---------- buttons ---------- */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color var(--transition), border-color var(--transition),
+        color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: var(--brand-500);
+    color: var(--text-on-brand);
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: var(--brand-600);
+}
+
+.btn--danger {
+    background: var(--danger);
+    color: #fff;
+}
+
+.btn--danger:hover:not(:disabled) {
+    background: var(--danger-600);
+}
+
+.btn--success {
+    background: var(--success);
+    color: #fff;
+}
+
+.btn--success:hover:not(:disabled) {
+    background: var(--success-600);
+}
+
+.btn--ghost {
+    background: transparent;
+    color: var(--text-2);
+    border-color: var(--border-2);
+}
+
+.btn--ghost:hover:not(:disabled) {
+    background: var(--bg-raised);
+    color: var(--text-1);
+}
+
+.btn--icon {
+    padding: var(--space-2);
+    background: transparent;
+    border-color: transparent;
+}
+
+.btn--icon:hover:not(:disabled) {
+    background: var(--bg-raised);
+}
+
+.btn--sm {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+}
+
+.btn--block {
+    width: 100%;
+}
+
+/* ---------- surfaces ---------- */
+
+.card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-1);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-1);
+    transition: background-color var(--transition), border-color var(--transition);
+}
+
+/* ---------- inputs ---------- */
+
+.input {
+    width: 100%;
+    padding: var(--space-3);
+    background: var(--bg-surface);
+    color: var(--text-1);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.input::placeholder {
+    color: var(--text-3);
+}
+
+.input:hover:not(:disabled) {
+    border-color: var(--brand-500);
+}
+
+.input:focus-visible {
+    border-color: var(--brand-500);
+    box-shadow: var(--focus-ring);
+}
+
+.input:disabled {
+    background: var(--bg-sunken);
+    cursor: not-allowed;
+}
+
+/* ---------- modal ---------- */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    z-index: 1000;
+    animation: fade-in 150ms ease;
+}
+
+.modal {
+    width: 100%;
+    max-width: 440px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: var(--space-5);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-1);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+    animation: modal-in 150ms ease;
+}
+
+.modal__title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    color: var(--text-1);
+}
+
+.modal__actions {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    margin-top: var(--space-5);
+}
+
+/* ---------- empty state ---------- */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+    color: var(--text-3);
+    font-size: var(--text-sm);
+}
+
+.empty-state__title {
+    color: var(--text-2);
+    font-weight: var(--weight-medium);
+}
+
+/* ---------- spinner ---------- */
+
+.spinner {
+    width: 1.1em;
+    height: 1.1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 700ms linear infinite;
+    flex-shrink: 0;
+}
+
+.spinner--lg {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-width: 3px;
+    color: var(--brand-500);
+}
+
+/* ---------- toast ---------- */
+
+.toast-region {
+    position: fixed;
+    bottom: var(--space-5);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    z-index: 2000;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 260px;
+    max-width: min(90vw, 420px);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-surface);
+    color: var(--text-1);
+    border: 1px solid var(--border-1);
+    border-left: 3px solid var(--text-3);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-2);
+    font-size: var(--text-sm);
+    pointer-events: auto;
+    animation: toast-in 180ms ease;
+}
+
+.toast--error {
+    border-left-color: var(--danger);
+}
+
+.toast--success {
+    border-left-color: var(--success);
+}
+
+.toast__close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    font-size: var(--text-md);
+    line-height: 1;
+    padding: var(--space-1);
+}
+
+.toast__close:hover {
+    color: var(--text-1);
+}
+
+/* ---------- scrollbars ---------- */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-2) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--border-2);
+    border-radius: var(--radius-pill);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--text-3);
+}
+
+/* ---------- animation ---------- */
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes modal-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}

@@ -8,6 +8,8 @@ import { acceptRequest, cancelRequest, rejectRequest, sendRequest } from '../dat
 import type { DisplayUserDetailsProps } from '../../definitions/chatsTypes.js';
 import geminiLogo from '../images/gemini-logo.png';
 import { deleteMessage, promptAI, promptAIRANDOM, sendRandomMessage } from '../data/MessageFunctions.js';
+import { errorMessage, postJson } from '../data/http.js';
+import { showToast } from '../ui/Toast.js';
 
 export default function RandomChatsPage ({currentUser, ifLightMode, currentFriends, outgoingFriendReq, incomingFriendReq, status, setStatus}: RandomChatsPage) {
     
@@ -46,13 +48,13 @@ export default function RandomChatsPage ({currentUser, ifLightMode, currentFrien
     
     return (
         <>
-        {status == 0 ? 
+        {status === 0 ? 
         <JoinQueueScreen 
         currentUser={currentUser}
         setStatus={setStatus}
         ifLightMode={ifLightMode}
         /> 
-        : status == 1 ? 
+        : status === 1 ? 
         <WaitingScreen
         currentUser={currentUser}
         queueSize={queueSize}
@@ -61,7 +63,7 @@ export default function RandomChatsPage ({currentUser, ifLightMode, currentFrien
         setMessageData={setMessageData}
         ifLightMode={ifLightMode}
         />
-        : status == 2 ?
+        : status === 2 ?
         <ChatDisplay
         currentUser={currentUser}
         chatData={chatData}
@@ -83,21 +85,27 @@ export default function RandomChatsPage ({currentUser, ifLightMode, currentFrien
 }
 
 function JoinQueueScreen ({currentUser, setStatus, ifLightMode}: JoinQueueScreenProps) {
-    // shown if status == 0
+    // shown if status === 0
+    const [joining, setJoining] = useState(false);
 
     return (
-        <div className={`rcp-join-queue-screen${!ifLightMode ? ' dark-mode' : ''}`}>
-            <div className={`rcp-queue-card${!ifLightMode ? ' dark-mode' : ''}`}>
+        <div className="rcp-join-queue-screen">
+            <div className="rcp-queue-card">
                 <div className="rcp-queue-icon">🎲</div>
-                <h3 className={`rcp-queue-title${!ifLightMode ? ' dark-mode' : ''}`}>Random Yapp</h3>
-                <p className={`rcp-queue-subtitle${!ifLightMode ? ' dark-mode' : ''}`}>
+                <h3 className="rcp-queue-title">Random Yapp</h3>
+                <p className="rcp-queue-subtitle">
                     Meet new people! Join the queue to be matched with a random user for a chat.
                 </p>
-                <button 
+                <button
                     className="rcp-join-queue-btn"
-                    onClick={() => joinQueue(currentUser.id, setStatus)}
+                    disabled={joining}
+                    onClick={async () => {
+                        setJoining(true);
+                        try { await joinQueue(currentUser.id, setStatus); }
+                        finally { setJoining(false); }
+                    }}
                 >
-                    Join Queue
+                    {joining ? "Joining…" : "Join Queue"}
                 </button>
             </div>
         </div>
@@ -107,16 +115,16 @@ function WaitingScreen ({currentUser, queueSize, setStatus, setCurrChatData, set
     // shown if status == 1
 
     return (
-        <div className={`rcp-waiting-screen${!ifLightMode ? ' dark-mode' : ''}`}>
-            <div className={`rcp-waiting-card${!ifLightMode ? ' dark-mode' : ''}`}>
-                <div className={`rcp-waiting-spinner${!ifLightMode ? ' dark-mode' : ''}`}></div>
-                <h3 className={`rcp-waiting-title${!ifLightMode ? ' dark-mode' : ''}`}>Looking for a Match...</h3>
-                <p className={`rcp-waiting-subtitle${!ifLightMode ? ' dark-mode' : ''}`}>
+        <div className="rcp-waiting-screen">
+            <div className="rcp-waiting-card">
+                <div className="rcp-waiting-spinner"></div>
+                <h3 className="rcp-waiting-title">Looking for a Match...</h3>
+                <p className="rcp-waiting-subtitle">
                     Hang tight! We're finding someone to chat with.
                 </p>
-                <div className={`rcp-queue-count${!ifLightMode ? ' dark-mode' : ''}`}>
+                <div className="rcp-queue-count">
                     <span className="rcp-queue-count-icon">👥</span>
-                    <p className={`rcp-queue-count-text${!ifLightMode ? ' dark-mode' : ''}`}>
+                    <p className="rcp-queue-count-text">
                         {queueSize ? `${queueSize} people in queue` : "Loading..."}
                     </p>
                 </div>
@@ -126,7 +134,7 @@ function WaitingScreen ({currentUser, queueSize, setStatus, setCurrChatData, set
                 >
                     Leave Queue
                 </button>
-                <p className={`rcp-waiting-tip${!ifLightMode ? ' dark-mode' : ''}`}>
+                <p className="rcp-waiting-tip">
                     💡 You'll be matched automatically when another user joins!
                 </p>
             </div>
@@ -143,10 +151,10 @@ function ChatDisplay({ currentUser, chatData, messageData, setStatus, setCurrCha
         other_user_id = userData[0]?.user_id == currentUser.id ? userData[1]?.user_id : userData[0]?.user_id;
     }
     return (
-        <div className={`rcp-random-chat-layout${!ifLightMode ? ' dark-mode' : ''}`}> {/* Main 3-column layout, unique class */}
+        <div className="rcp-random-chat-layout"> {/* Main 3-column layout, unique class */}
             {/* Center column: messages and controls */}
-            <div className={`rcp-random-chat-center-col${!ifLightMode ? ' dark-mode' : ''}`}>
-                <div className={`rcp-random-chat-controls${!ifLightMode ? ' dark-mode' : ''}`}>
+            <div className="rcp-random-chat-center-col">
+                <div className="rcp-random-chat-controls">
                     <button className="rcp-next-chat-btn" onClick={() => {
                         if (chatData) leaveRandomChat(chatData.chat_id, other_user_id ?? 0, currentUser.id, setStatus, setCurrChatData, setMessageData)
                     }}>Next</button>
@@ -166,7 +174,7 @@ function ChatDisplay({ currentUser, chatData, messageData, setStatus, setCurrCha
                 )}
             </div>
             {/* Right column: user list */}
-            <div className={`rcp-random-chat-users-col${!ifLightMode ? ' dark-mode' : ''}`}>
+            <div className="rcp-random-chat-users-col">
                 {chatData && (
                     <UsersDisplayRandom
                         userData={chatData.userData}
@@ -188,7 +196,7 @@ function SendMessageInputRandom ({currentUser, chat_id, ifLightMode, setMessageD
     const handleSend = () => {
         if (!message.trim()) return;
         if (!ifAskAI) {
-            sendRandomMessage(chat_id, message, currentUser.id, setMessage, setMessageData, setCurrChatData, setStatus, setQueueSize);
+            sendRandomMessage(chat_id, message, currentUser.id, setMessage, setMessageData, setCurrChatData, setStatus, setQueueSize, currentUser.username);
         } else {
             promptAIRANDOM(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username);
         }
@@ -201,12 +209,12 @@ function SendMessageInputRandom ({currentUser, chat_id, ifLightMode, setMessageD
     };
 
     return (
-        <div id="send-msg-input" className={!ifLightMode?"dark-mode":""}>
-            <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}/>
-            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={handleSend}>Send</button>
-            <div className={`gemini-checkbox-wrapper${!ifLightMode ? ' dark-mode' : ''}`}>
+        <div id="send-msg-input">
+            <input id="message-send-bar" placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}/>
+            <button id="send-msg-btn" onClick={handleSend}>Send</button>
+            <div className="gemini-checkbox-wrapper">
                 <label htmlFor='if-ask-gemini'><img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/> Ask Gemini</label>
-                <input id="if-ask-gemini" className={!ifLightMode?"dark-mode":""} checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
+                <input id="if-ask-gemini" checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
             </div>
         </div>
     );
@@ -238,38 +246,38 @@ function RandomMessageDisplay ({currentUser, chat_id, ifLightMode, messageData, 
                 // prompt ai
 
                 messageElements.push(
-                    <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
-                        <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
-                        <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
-                        <div className={`gemini-text ${!ifLightMode?"dark-mode":""}`}>
+                    <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""}`} key={message_id}>
+                        <p className="msg-username-date">{username} {formatDateTimeSmart(sent_at)}</p>
+                        <p className="msg-text">{message}</p>
+                        <div className="gemini-text">
                             <span>Ask Gemini</span>
                             <img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/>
                         </div>
-                        {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
+                        {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className="delete-msg-btn">Delete</button>:<></>}
                     </li>
                 )
                 
             } else if (sender_id === -1 && askGemini === 1) {
                 // gemini response
                 messageElements.push(
-                    <li className={`ai-response-container ${!ifLightMode?"dark-mode":""}`} key={message_id}>
+                    <li className="ai-response-container" key={message_id}>
                         <img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/>
-                        <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
-                        <p className={`msg-time ${!ifLightMode?"dark-mode":""}`}>{formatDateTimeSmart(sent_at)}</p>
+                        <p className="msg-text">{message}</p>
+                        <p className="msg-time">{formatDateTimeSmart(sent_at)}</p>
                     </li>
                 );
             } else if (sender_id === -1) {
                 messageElements.push(
-                <li className={`server-msg-container ${!ifLightMode?"dark-mode":""}`} key={message_id}>
-                    <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message} {formatDateTimeSmart(sent_at)}</p>
+                <li className="server-msg-container" key={message_id}>
+                    <p className="msg-text">{message} {formatDateTimeSmart(sent_at)}</p>
                 </li>);
             } else {
                 messageElements.push(
-                    <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
-                        <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
-                        <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
+                    <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""}`} key={message_id}>
+                        <p className="msg-username-date">{username} {formatDateTimeSmart(sent_at)}</p>
+                        <p className="msg-text">{message}</p>
     
-                        {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
+                        {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className="delete-msg-btn">Delete</button>:<></>}
                     </li>
                 );
             }
@@ -279,7 +287,7 @@ function RandomMessageDisplay ({currentUser, chat_id, ifLightMode, messageData, 
     }
     return (
         <>
-            <ul id="msg-display" className={!ifLightMode?"dark-mode":""}>
+            <ul id="msg-display">
                 {messageElements}
                 <div ref={messagesEndRef} />
             </ul>
@@ -328,7 +336,7 @@ function UsersDisplayRandom({ userData, currentUser, ifLightMode, currentFriends
                 descFriends = `Friends`;
             } else if (outgoingEntry) {
                 friendBtns = (
-                    <button className={`cancel-req-btn ${!ifLightMode ? "dark-mode" : ""}`} onClick={() =>
+                    <button className="cancel-req-btn" onClick={() =>
                         cancelRequest(outgoingEntry.friend_id, user_id, username ?? "")
                     }> Cancel </button>
                 );
@@ -336,10 +344,10 @@ function UsersDisplayRandom({ userData, currentUser, ifLightMode, currentFriends
             } else if (incomingEntry) {
                 friendBtns = (
                     <div className="chat-incoming-req-btns">
-                        <button className={`reject-req-btn ${!ifLightMode ? "dark-mode" : ""}`} onClick={() =>
+                        <button className="reject-req-btn" onClick={() =>
                             rejectRequest(incomingEntry.friend_id, username ?? "", user_id)
                         }> Reject </button>
-                        <button className={`accept-req-btn ${!ifLightMode ? "dark-mode" : ""}`} onClick={() =>
+                        <button className="accept-req-btn" onClick={() =>
                             acceptRequest(incomingEntry.friend_id, username ?? "", user_id)
                         }> Accept </button>
                     </div>
@@ -347,7 +355,7 @@ function UsersDisplayRandom({ userData, currentUser, ifLightMode, currentFriends
                 descFriends = " Incoming Request";
             } else {
                 friendBtns = (
-                    <button className={`send-friend-req-btn ${!ifLightMode ? "dark-mode" : ""}`} onClick={() =>
+                    <button className="send-friend-req-btn" onClick={() =>
                         sendRequest(currentUser.id, user_id)
                     }>
                         Send Request
@@ -371,18 +379,18 @@ function UsersDisplayRandom({ userData, currentUser, ifLightMode, currentFriends
         }
 
         userDisplay.push(
-            <li key={`random-${user_id}`} className={`chat-user-list ${!ifLightMode ? "dark-mode" : ""}`} onClick={() => {
+            <li key={`random-${user_id}`} className="chat-user-list" onClick={() => {
                 setUserDetailsOpen(user_id);
             }}>
                 {username}{currentUser.id === user_id ? "(You)" : ""}
-                <p className={`desc-friends ${!ifLightMode ? "dark-mode" : ""}`}>{descFriends}</p>
+                <p className="desc-friends">{descFriends}</p>
             </li>
         );
     }
 
     return (
         <div style={{ position: "relative", zIndex: 1000 }}>
-            <h3 className={`rcp-users-header${!ifLightMode ? ' dark-mode' : ''}`}>Users in Chat</h3>
+            <h3 className="rcp-users-header">Users in Chat</h3>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {userDisplay}
             </ul>
@@ -396,17 +404,16 @@ function DisplayUserDetailsRandom ({user, setUserDetailsOpen, currentUser, ifLig
         <>
                 <div
                 id="display-user-details"
-                className={!ifLightMode ? "dark-mode" : ""}
                 onClick={(e) => e.stopPropagation()}
                 >
-                    <button id="close-user-details" className={!ifLightMode?"dark-mode":""} onClick={(e) => {
+                    <button id="close-user-details" onClick={(e) => {
                     setUserDetailsOpen(null)
                     }}>X</button>
-                <h3 id="display-user-username" className={!ifLightMode?"dark-mode":""}><b>{username}</b> ID: {user_id} {friendBtns}</h3>
-                <p id="creation-date" className={!ifLightMode?"dark-mode":""}>Account created at: {account_created}</p>
-                {currentUser.id !== user_id ? <p id="friends-since" className={!ifLightMode?"dark-mode":""}>{descFriends} {updated_at ? `Since ${updated_at}` : ""}</p> : <></>}
+                <h3 id="display-user-username"><b>{username}</b> ID: {user_id} {friendBtns}</h3>
+                <p id="creation-date">Account created at: {account_created}</p>
+                {currentUser.id !== user_id ? <p id="friends-since">{descFriends} {updated_at ? `Since ${updated_at}` : ""}</p> : <></>}
                 
-                <p id="display-user-description" className={!ifLightMode?"dark-mode":""}>Description: {description ? description : "None added"}</p>
+                <p id="display-user-description">Description: {description ? description : "None added"}</p>
             </div>
         
         </>
@@ -448,20 +455,17 @@ function leaveQueue(user_id: number, setStatus: (value: number)=> void, setCurrC
         console.log(err);
     });
 }
-function joinQueue(user_id: number, setStatus: (value: number)=> void) {
-    fetch('/api/randomChats/joinQueue', {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({user_id})
-    }).then(async res => {
-        const parsed: standardResponse = await res.json();
-        console.log(parsed.message);
+async function joinQueue(user_id: number, setStatus: (value: number)=> void) {
+    try {
+        const parsed = await postJson<standardResponse>('/api/randomChats/joinQueue', {user_id});
         if (parsed.success) {
-            setStatus(1); // set to waiting status immediately (if successful)
+            setStatus(1); // waiting
+        } else {
+            showToast(parsed.message ?? 'Could not join the queue');
         }
-    }).catch(err => {
-        console.log(err);
-    });
+    } catch (err) {
+        showToast(errorMessage(err));
+    }
 }
 function getQueueStatus (id: number, setStatus: (value: number) => void, setCurrChatData: (value: chatData | null) => void, setMessageData: (value: SelectMessagesFromChat[] | null) => void, setQueueSize: (value: number | null)=>void) {
     fetch(`/api/randomChats/getRandomChat/${id}`)

@@ -14,16 +14,20 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
     useEffect(() => {
             if (!currentUser?.id) return;
 
-            // Initial fetch to load history
-            getPastMessages(currentUser.id, setMessageData, chat_id);
-
-            // Join this chat's socket room for real-time updates
+            // Join the room and attach the listener BEFORE fetching history so a
+            // message landing mid-request isn't lost. getPastMessages merges into
+            // existing state rather than replacing it, for the same reason.
             socket.emit('join-chat', chat_id);
 
             const handleNewMessage = (msg: SelectMessagesFromChat) => {
-                setMessageData(prev => [...prev, msg]);
+                setMessageData(prev =>
+                    prev.some(m => m.message_id === msg.message_id) ? prev : [...prev, msg]
+                );
             };
             socket.on('new-message', handleNewMessage);
+
+            setMessageData([]);
+            getPastMessages(currentUser.id, setMessageData, chat_id);
 
             return () => {
                 socket.emit('leave-chat', chat_id);
@@ -38,7 +42,7 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
         
     return (
         <>
-            <PastMessagesData pastMessageData={pastMessageData} currentUser={currentUser} chat_id={chat_id} ifLightMode={ifLightMode} messagesEndRef={messagesEndRef}/>
+            <PastMessagesData pastMessageData={pastMessageData} currentUser={currentUser} chat_id={chat_id} ifLightMode={ifLightMode} messagesEndRef={messagesEndRef} setMessageData={setMessageData}/>
             <SendMessageInput
             currentUser={currentUser}
             chat_id={chat_id}
@@ -50,7 +54,7 @@ function MessagingSection ({currentUser, chat_id, ifLightMode}: MessagingSection
 }
 
 // cache past messages to prevent re-renders when parent updates
-const PastMessagesData = memo(function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode, messagesEndRef}: PastMessagesDataProp & { messagesEndRef: React.RefObject<HTMLDivElement | null> }) {
+const PastMessagesData = memo(function PastMessagesData ({pastMessageData, currentUser, chat_id, ifLightMode, messagesEndRef, setMessageData}: PastMessagesDataProp & { messagesEndRef: React.RefObject<HTMLDivElement | null>, setMessageData: React.Dispatch<React.SetStateAction<SelectMessagesFromChat[]>> }) {
     // display for past messages - memoized to prevent re-renders when parent updates
 
     const messageDisplay = useMemo(() => {
@@ -62,49 +66,55 @@ const PastMessagesData = memo(function PastMessagesData ({pastMessageData, curre
         if (sender_id !== -1 && askGemini === 1) {
             // prompt
             messages.push(
-                <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
-                    <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
-                    <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
-                    <div className={`gemini-text ${!ifLightMode?"dark-mode":""}`}>
+                <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""}`} key={message_id}>
+                    <p className="msg-username-date">{username} {formatDateTimeSmart(sent_at)}</p>
+                    <p className="msg-text">{message}</p>
+                    <div className="gemini-text">
                         <span>Ask Gemini</span>
                         <img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/>
                     </div>
-                    {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
+                    {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id, setMessageData)} className="delete-msg-btn">Delete</button>:<></>}
                 </li>
             );
         } else if (sender_id === -1 && askGemini === 1) {
             // gemini response
             messages.push(
-                <li className={`ai-response-container ${!ifLightMode?"dark-mode":""}`} key={message_id}>
+                <li className="ai-response-container" key={message_id}>
                     <img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/>
-                    <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
-                    <p className={`msg-time ${!ifLightMode?"dark-mode":""}`}>{formatDateTimeSmart(sent_at)}</p>
+                    <p className="msg-text">{message}</p>
+                    <p className="msg-time">{formatDateTimeSmart(sent_at)}</p>
                 </li>
             );
         } else if (sender_id === -1) {
             // server message different format
             messages.push(
             <li className='server-msg-container' key={message_id}>
-                <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message} {formatDateTimeSmart(sent_at)}</p>
+                <p className="msg-text">{message} {formatDateTimeSmart(sent_at)}</p>
             </li>
             );
         } else {
             messages.push(
-                <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""} ${!ifLightMode?"dark-mode":""}`} key={message_id}>
-                    <p className={`msg-username-date ${!ifLightMode?"dark-mode":""}`}>{username} {formatDateTimeSmart(sent_at)}</p>
-                    <p className={`msg-text ${!ifLightMode?"dark-mode":""}`}>{message}</p>
+                <li className={`msg-container ${sender_id===currentUser.id?"your-msg":""}`} key={message_id}>
+                    <p className="msg-username-date">{username} {formatDateTimeSmart(sent_at)}</p>
+                    <p className="msg-text">{message}</p>
 
-                    {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id)} className={`delete-msg-btn ${!ifLightMode?"dark-mode":""}`}>Delete</button>:<></>}
+                    {sender_id===currentUser.id?<button onClick={()=>deleteMessage(message_id, currentUser.id, sender_id, chat_id, setMessageData)} className="delete-msg-btn">Delete</button>:<></>}
                 </li>
             );
         }
     }
 
     return messages;
-    }, [pastMessageData, currentUser.id, chat_id, ifLightMode]);
+    }, [pastMessageData, currentUser.id, chat_id, ifLightMode, setMessageData]);
 
     return (
-        <ul id="msg-display" className={!ifLightMode?"dark-mode":""}>
+        <ul id="msg-display">
+            {pastMessageData.length === 0 ? (
+                <li className="empty-state">
+                    <span className="empty-state__title">No messages yet</span>
+                    <span>Say something to get the conversation started.</span>
+                </li>
+            ) : null}
             {messageDisplay}
             <div ref={messagesEndRef} />
         </ul>
@@ -115,12 +125,19 @@ function SendMessageInput ({currentUser, chat_id, ifLightMode, setMessageData}: 
     const [message, setMessage] = useState("");
     const [ifAskAI, setIfAskAI] = useState(false);
 
-    const handleSend = () => {
-        if (!message.trim()) return;
-        if (!ifAskAI) {
-            sendMessage(chat_id, message, currentUser.id, setMessage, setMessageData);
-        } else {
-            promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username, setMessageData);
+    const [sending, setSending] = useState(false);
+
+    const handleSend = async () => {
+        if (!message.trim() || sending) return;
+        setSending(true);
+        try {
+            if (!ifAskAI) {
+                await sendMessage(chat_id, message, currentUser.id, setMessage, setMessageData, currentUser.username);
+            } else {
+                await promptAI(setMessage, setIfAskAI, message, chat_id, currentUser.id, currentUser.username);
+            }
+        } finally {
+            setSending(false);
         }
     };
 
@@ -131,12 +148,15 @@ function SendMessageInput ({currentUser, chat_id, ifLightMode, setMessageData}: 
     };
 
     return (
-        <div id="send-msg-input" className={!ifLightMode?"dark-mode":""}>
-            <input id="message-send-bar" className={!ifLightMode?"dark-mode":""} placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}/>
-            <button id="send-msg-btn" className={!ifLightMode?"dark-mode":""} onClick={handleSend}>Send</button>
-            <div className={`gemini-checkbox-wrapper${!ifLightMode ? ' dark-mode' : ''}`}>
+        <div id="send-msg-input">
+            <label className="sr-only" htmlFor="message-send-bar">Message</label>
+            <input id="message-send-bar" placeholder='Send Message' type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown}/>
+            <button id="send-msg-btn" onClick={handleSend} disabled={sending || !message.trim()}>
+                {sending ? <span className="spinner" aria-hidden="true" /> : "Send"}
+            </button>
+            <div className="gemini-checkbox-wrapper">
                 <label htmlFor='if-ask-gemini'><img src={geminiLogo} alt="gemini-logo" className='gemini-logo'/> Ask Gemini</label>
-                <input id="if-ask-gemini" className={!ifLightMode?"dark-mode":""} checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
+                <input id="if-ask-gemini" checked={ifAskAI} onChange={() =>setIfAskAI(!ifAskAI)} type="checkbox"/>
             </div>
         </div>
     );

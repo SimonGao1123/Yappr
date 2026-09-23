@@ -11,6 +11,8 @@ import type { standardResponse } from '../../definitions/globalType.js';
 import type { CurrOutIncFriendsQuery } from '../../definitions/friendsTypes.js';
 import { acceptRequest, cancelRequest, rejectRequest, sendRequest } from '../data/FriendsFunctions.js';
 import { addMembers, deleteChat, kickUser, leaveChat, readMessages } from '../data/ChatsFunctions.js';
+import { errorMessage, postJson } from '../data/http.js';
+import { Modal } from '../ui/Modal.js';
 
 function ChatsPage ({currentUser, currentFriends, ifLightMode, allChats, setAllChats}: ChatsPageProps) {
     // currentFriends holds array of {user_id, username, friend_id}
@@ -56,33 +58,34 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
     const [selectedChat, setSelectedChat] = useState<CurrChat | null>(null); // holds {chat object}
     const [filterChats, setFilterChats] = useState("");
 
+    const selectedChatId = selectedChat?.chat_id ?? null;
+    const selectedChatUnread = selectedChat?.unread;
+
     useEffect(() => {
-        if (!selectedChat) return;
+        if (selectedChatId === null) return;
 
-        const updatedChat = allChats.find(
-            chat => chat.chat_id === selectedChat.chat_id
-        );
+        const updatedChat = allChats.find(chat => chat.chat_id === selectedChatId);
 
-        if (updatedChat) {
-            setSelectedChat(updatedChat);
-        } else {
+        if (!updatedChat) {
             // chat no longer exists, clear selection
             setSelectedChat(null);
             setMobileView('chats');
+            return;
         }
-    }, [allChats]);
+
+        // Only swap in a new object when the contents actually differ. Every
+        // refresh produces fresh object identities, and blindly re-setting them
+        // retriggered the read-receipt effect below on every single refresh.
+        setSelectedChat(prev =>
+            prev && JSON.stringify(prev) === JSON.stringify(updatedChat) ? prev : updatedChat
+        );
+    }, [allChats, selectedChatId, setMobileView]);
 
     useEffect(() => {
-        // reads
-        if (!selectedChat) return;
-        if (!selectedChat.unread) return;
-        readMessages(selectedChat.chat_id, currentUser.id);
-    }, [selectedChat]);
-
-    // Refresh chats whenever selected chat changes
-    useEffect(() => {
-        refreshChats();
-    }, [selectedChat?.chat_id]);
+        // mark as read on open
+        if (selectedChatId === null || !selectedChatUnread) return;
+        readMessages(selectedChatId, currentUser.id);
+    }, [selectedChatId, selectedChatUnread, currentUser.id]);
 
     // Handle chat selection - switch to messages view on mobile
     const handleChatSelect = (chat: CurrChat) => {
@@ -98,13 +101,13 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
         chat_list.push(
             <li key={chat.chat_id}
             onClick={() => handleChatSelect(chat)}
-            className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""} ${!ifLightMode?"dark-mode":""}`}
+            className={`chat ${selectedChat?.chat_id===chat.chat_id?"selected-chat":""}`}
             >
                 <p className='chat-name-sec'>{chat_name} {chat.unread?"🔴 unread messages":""}</p>
                 
                 <div className="chat-button-container">
                     {chat.creator_id===currentUser.id ? 
-                    <button id="delete-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={async (e) => {
+                    <button id="delete-chat-btn" onClick={async (e) => {
                         e.stopPropagation();
                         await deleteChat(currentUser.id, chat.chat_id, chat.creator_id);
                         await refreshChats();
@@ -115,7 +118,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                         setAddMembersDisplay(false);
                     }}>Delete</button> 
                     : <></>}
-                    <button id="leave-btn" className={!ifLightMode?"dark-mode":""} onClick={async (e) => {
+                    <button id="leave-btn" onClick={async (e) => {
                         e.stopPropagation();
                         await leaveChat(currentUser.id, currentUser.username, chat.chat_id, chat.creator_id);
                         await refreshChats();
@@ -134,15 +137,15 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
 
     return (
         <>
-        <main id="main-chat-page" className={`${!ifLightMode?"dark-mode":""} mobile-view-${mobileView}`}>
+        <main id="main-chat-page" className={`mobile-view-${mobileView}`}>
 
             {/* Mobile Navigation Arrows - only visible when chat selected */}
             {selectedChat && (
-                <div className={`mobile-nav-arrows ${!ifLightMode?"dark-mode":""}`}>
+                <div className="mobile-nav-arrows">
                     {mobileView==="messages"?
                     <>
                         <button 
-                            className={`mobile-nav-arrow left ${!ifLightMode?"dark-mode":""}`}
+                            className="mobile-nav-arrow left"
                             onClick={() => setMobileView('chats')}
                             title="Back to Chats"
                         >
@@ -150,7 +153,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                         </button>
                         <span className="mobile-chat-title">{selectedChat.chat_name}</span>
                         <button 
-                            className={`mobile-nav-arrow right ${!ifLightMode?"dark-mode":""}`}
+                            className="mobile-nav-arrow right"
                             onClick={() => setMobileView('users')}
                             title="View Users"
                         >
@@ -160,7 +163,7 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
                     : mobileView==='users' ? 
                     <>
                         <button 
-                            className={`mobile-nav-arrow left ${!ifLightMode?"dark-mode":""}`}
+                            className="mobile-nav-arrow left"
                             onClick={() => setMobileView('messages')}
                             title="Back to Messages"
                         >
@@ -175,15 +178,29 @@ function DisplayChats ({setCreateChatsDisplay, addMembersDisplay, setAddMembersD
             )}
 
             {/* Left column: chat list */}
-            <div id="chat-list-container" className={!ifLightMode?"dark-mode":""}>
-                <button id="show-create-chat-popup" className={!ifLightMode?"dark-mode":""} onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
-                <input type="text" id="search-chats-bar" className={!ifLightMode?"dark-mode":""} placeholder="Search chats..." value={filterChats} onChange={(e) => {
+            <div id="chat-list-container">
+                <button id="show-create-chat-popup" onClick={() => setCreateChatsDisplay(true)}>Create Chat</button>
+                <label className="sr-only" htmlFor="search-chats-bar">Search chats</label>
+                <input type="text" id="search-chats-bar" placeholder="Search chats..." value={filterChats} onChange={(e) => {
                     setFilterChats(e.target.value);
                 }}/>
 
-                <ul id="chat-list">
-                    {chat_list}
-                </ul>
+                {chat_list.length === 0 ? (
+                    <div className="empty-state">
+                        <span className="empty-state__title">
+                            {filterChats ? "No matching chats" : "No chats yet"}
+                        </span>
+                        <span>
+                            {filterChats
+                                ? "Try a different search."
+                                : "Create a chat to start talking with your friends."}
+                        </span>
+                    </div>
+                ) : (
+                    <ul id="chat-list">
+                        {chat_list}
+                    </ul>
+                )}
             </div>
 
             {/* Middle and right columns, only exist if a chat is selected*/}
@@ -223,19 +240,19 @@ function ChatLayout ({chat_name, chat_id, currentUser, ifLightMode, selectedChat
     const [newChatName, setNewChatName] = useState(chat_name);
     return (
         
-        <div id="chat-layout" className={!ifLightMode?"dark-mode":""}>
-            <p id="chat-name" className={!ifLightMode?"dark-mode":""}>
-                {editingChatName ? <input className={!ifLightMode?"dark-mode":""} placeholder="New chat name" id="new-chat-name-input" type='text' maxLength={30} value={newChatName} onChange={(e) => setNewChatName(e.target.value)}/> : chat_name}    
+        <div id="chat-layout">
+            <p id="chat-name">
+                {editingChatName ? <input placeholder="New chat name" id="new-chat-name-input" type='text' maxLength={30} value={newChatName} onChange={(e) => setNewChatName(e.target.value)}/> : chat_name}    
                 {selectedChat.creator_id===currentUser.id ? 
                 editingChatName?
-                <button className={!ifLightMode?"dark-mode":""} id="update-chat-name-btn" onClick={async () => {
+                <button id="update-chat-name-btn" onClick={async () => {
                     await editChatName(setEditingChatName, newChatName, chat_id, currentUser.id, selectedChat.creator_id, currentUser.username);
                     await refreshChats();
                 }}>
                     <img src={updateChatNameIcon} id="update-chat-icon" alt="update"/>
                 </button>
                 :
-                <button className={!ifLightMode?"dark-mode":""} id="edit-chat-name-btn" onClick={() => setEditingChatName(!editingChatName)}>
+                <button id="edit-chat-name-btn" onClick={() => setEditingChatName(!editingChatName)}>
                     <img src={editChatNameIcon} id="edit-chat-icon" alt="edit"/>
                 </button>
                 
@@ -284,7 +301,7 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                 descFriends = `Friends`
             } else if (status === "outgoing") {
                 friendBtns = (
-                    <button className={`cancel-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
+                    <button className="cancel-req-btn" onClick={() =>
                         cancelRequest(friend_id ?? 0, user_id, username ?? "")
                     }> Cancel </button>
                 );
@@ -292,10 +309,10 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
             } else if (status === "incoming") {
                 friendBtns = (
                     <div className="chat-incoming-req-btns">
-                    <button className={`reject-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
+                    <button className="reject-req-btn" onClick={() =>
                             rejectRequest(friend_id ?? 0, username ?? "", user_id)
                         }> Reject </button>
-                    <button className={`accept-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() =>
+                    <button className="accept-req-btn" onClick={() =>
                             acceptRequest(friend_id ?? 0, username ?? "", user_id)
                         }> Accept </button>
                     </div>
@@ -303,7 +320,7 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                 descFriends = " Incoming Request";
             } else {
                 friendBtns = (
-                    <button className={`send-friend-req-btn ${!ifLightMode?"dark-mode":""}`} onClick={() => 
+                    <button className="send-friend-req-btn" onClick={() => 
                         sendRequest(currentUser.id,user_id)
                     }>
                         Send Request
@@ -313,7 +330,7 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
         }
 
         userDisplay.push(
-            <li key={`${chat_id}-${user.username}`} className={`chat-user-list ${!ifLightMode?"dark-mode":""}`} onClick={() => setUserDetailsOpen(user_id)}>
+            <li key={`${chat_id}-${user.username}`} className="chat-user-list" onClick={() => setUserDetailsOpen(user_id)}>
                 {userDetailsOpened === user_id ? 
                 <DisplayUserDetails
                     user_id={user_id}
@@ -333,9 +350,9 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
                 <></>}
 
                 {`${creator_id===user_id?"👑":""}`}{username}{currentUser.id===user_id?"(You)":""}
-                <p className={`desc-friends ${!ifLightMode?"dark-mode":""}`}>{descFriends}</p>
+                <p className="desc-friends">{descFriends}</p>
                 {creator_id===currentUser.id && currentUser.id !== user_id?
-                <button className={`kick-btn ${!ifLightMode?"dark-mode":""}`} onClick={async ()=>{
+                <button className="kick-btn" onClick={async ()=>{
                     await kickUser(creator_id, currentUser.id, currentUser.username, user_id, username ?? "", chat_id);
                     await refreshChats();
                 }}>Kick</button>:<></>}
@@ -343,10 +360,10 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
         );
     }
     return (
-        <ul id="chat-users-container" className={!ifLightMode?"dark-mode":""}>
-            <div id="chat-users-header" className={!ifLightMode?"dark-mode":""}>Users in Chat:</div>
+        <ul id="chat-users-container">
+            <div id="chat-users-header">Users in Chat:</div>
             {userDisplay}
-            <button id="add-members-btn" className={!ifLightMode?"dark-mode":""} onClick={() => setAddMembersDisplay(true)}>Add members</button>
+            <button id="add-members-btn" onClick={() => setAddMembersDisplay(true)}>Add members</button>
             {addMembersDisplay?<AddMembersPopup setAddMembersDisplay={setAddMembersDisplay} userList={userList} currentFriends={currentFriends} chat_id={chat_id} currentUser={currentUser} ifLightMode={ifLightMode} refreshChats={refreshChats}/>:<></>}
         </ul>
     );
@@ -355,23 +372,24 @@ function UsersLayout ({addMembersDisplay, setAddMembersDisplay, chat_id, userLis
 
 function DisplayUserDetails ({user_id, username, description, account_created, joined_at, friendsBtns, updated_at, descFriends, setUserDetailsOpen, currentUser, ifLightMode}: DisplayUserDetailsProps) {
     return (
-        <div id='display-user-details' className={!ifLightMode?"dark-mode":""}>
-            <button id="close-user-details" className={!ifLightMode?"dark-mode":""} onClick={(e) => {
+        <div id='display-user-details'>
+            <button id="close-user-details" onClick={(e) => {
                 e.stopPropagation();
                 setUserDetailsOpen(null)
                 }}>X</button>
-            <h3 id="display-user-username" className={!ifLightMode?"dark-mode":""}><b>{username}</b> ID: {user_id} {friendsBtns}</h3>
-            <p id="creation-date" className={!ifLightMode?"dark-mode":""}>Account created at: {account_created}</p>
-            <p id="joined-date" className={!ifLightMode?"dark-mode":""}>Joined chat: {joined_at}</p>
-            {currentUser.id !== user_id ? <p id="friends-since" className={!ifLightMode?"dark-mode":""}>{descFriends} {updated_at ? `Since ${updated_at}` : ""}</p> : <></>}
+            <h3 id="display-user-username"><b>{username}</b> ID: {user_id} {friendsBtns}</h3>
+            <p id="creation-date">Account created at: {account_created}</p>
+            <p id="joined-date">Joined chat: {joined_at}</p>
+            {currentUser.id !== user_id ? <p id="friends-since">{descFriends} {updated_at ? `Since ${updated_at}` : ""}</p> : <></>}
             
-            <p id="display-user-description" className={!ifLightMode?"dark-mode":""}>Description: {description ? description : "None added"}</p>
+            <p id="display-user-description">Description: {description ? description : "None added"}</p>
         </div>
     );
 }
 
 function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_id, currentUser, ifLightMode, refreshChats }: AddMembersPopupProps & {refreshChats: () => Promise<void>}) {
     const [addedFriends, setAddedFriends] = useState<CurrOutIncFriendsQuery[]>([]);
+    const [adding, setAdding] = useState(false);
 
     // Only show friends who are NOT already in the chat
     const selectableFriends = currentFriends.filter(
@@ -379,17 +397,21 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
     );
 
     return (
-        <div id="add-friends-container" className={!ifLightMode?"dark-mode":""}>
-            <button id="close-add-members-popup" className={!ifLightMode?"dark-mode":""} onClick={() => setAddMembersDisplay(false)}>X</button>
-            <h2 className={!ifLightMode?"dark-mode":""}>Add Members</h2>
-            <ul>
+        <Modal title="Add Members" onClose={() => setAddMembersDisplay(false)} labelledById="add-members-title">
+            {selectableFriends.length === 0 ? (
+                <div className="empty-state">
+                    <span className="empty-state__title">Nobody left to add</span>
+                    <span>All of your friends are already in this chat.</span>
+                </div>
+            ) : (
+            <ul id="add-members-friend-list">
                 {selectableFriends.map(friend => {
                     const isSelected = addedFriends.some(f => f.friend_id === friend.friend_id);
 
                     return (
                         <li
                             key={`add-members-${friend.friend_id}`}
-                            className={`add-members ${isSelected ? "selected" : ""} ${!ifLightMode?"dark-mode":""}`}
+                            className={`add-members ${isSelected ? "selected" : ""}`}
                             onClick={() => {
                                 if (isSelected) {
                                     setAddedFriends(
@@ -405,19 +427,29 @@ function AddMembersPopup({setAddMembersDisplay, userList, currentFriends, chat_i
                     );
                 })}
             </ul>
+            )}
 
-            <button
-                id="add-members-btn"
-                className={!ifLightMode?"dark-mode":""}
-                onClick={async () => {
-                    await addMembers(currentUser.username, currentUser.id, addedFriends, chat_id, setAddMembersDisplay);
-                    await refreshChats();
-                }}
-            >
-                Add
-            </button>
-
-        </div>
+            <div className="modal__actions">
+                <button className="btn btn--ghost" type="button" onClick={() => setAddMembersDisplay(false)}>Cancel</button>
+                <button
+                    className="btn btn--primary"
+                    id="add-members-btn"
+                    type="button"
+                    disabled={addedFriends.length === 0 || adding}
+                    onClick={async () => {
+                        setAdding(true);
+                        try {
+                            await addMembers(currentUser.username, currentUser.id, addedFriends, chat_id, setAddMembersDisplay);
+                            await refreshChats();
+                        } finally {
+                            setAdding(false);
+                        }
+                    }}
+                >
+                    {adding ? "Adding…" : "Add"}
+                </button>
+            </div>
+        </Modal>
     );
 }
 function formatDateTimeSmart(isoString: string) {
@@ -450,16 +482,15 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, 
     const [selectedFriends, setSelectedFriends] = useState<CurrOutIncFriendsQuery[]>([]);
     const [chatName, setChatName] = useState("");
     const [displayMsg, setDisplayMsg] = useState("");
+    const [creating, setCreating] = useState(false);
     const friendsDisplay = []; // only curr friends can be chosen to be in the chat
 
-    console.log(selectedFriends); // TESTING
     for (const friend of currentFriends) {
         const ifFriendSelected = selectedFriends.some((selFriend) => selFriend.friend_id === friend.friend_id);
         // check if selectedFrineds contains friend
         friendsDisplay.push(
             <li key={`create-chats-popup-${friend.friend_id}`} 
-            className={`create-chat-friends 
-                ${ifFriendSelected ? "selected" : ""} ${!ifLightMode?"dark-mode":""}`}
+            className={`create-chat-friends ${ifFriendSelected ? "selected" : ""}`}
             onClick={() => {
                 if (ifFriendSelected) {
                     // if already selected
@@ -474,41 +505,54 @@ function CreateChatsPopUp ({currentFriends, currentUser, setCreateChatsDisplay, 
             </li>
         );
     }
+    const canSubmit = selectedFriends.length > 0 && chatName.trim().length > 0 && !creating;
+
     return (
-        <div id="create-chats-popup" className={!ifLightMode?"dark-mode":""}>
-            <button id="close-create-chats-popup" className={!ifLightMode?"dark-mode":""} onClick={() => setCreateChatsDisplay(false)}>X</button>
-            <h2 className={!ifLightMode?"dark-mode":""}>Create Chat</h2>
-            <ul>
-                {friendsDisplay}
-            </ul>
-            <input placeholder="Chat Name" id="get-chat-name" className={!ifLightMode?"dark-mode":""} value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
-            <button id="create-chat-btn" className={!ifLightMode?"dark-mode":""} onClick={async () => {
-                await createChat(currentUser.username, currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg);
-                await refreshChats();
-            }}>Create Chat</button>
-            <p id="popup-display-msg" className={!ifLightMode?"dark-mode":""}>{displayMsg}</p>
-        </div>
+        <Modal title="Create Chat" onClose={() => setCreateChatsDisplay(false)} labelledById="create-chat-title">
+            {currentFriends.length === 0 ? (
+                <div className="empty-state">
+                    <span className="empty-state__title">No friends to add</span>
+                    <span>Add a friend before creating a chat.</span>
+                </div>
+            ) : (
+                <ul id="create-chat-friend-list">
+                    {friendsDisplay}
+                </ul>
+            )}
+            <label className="sr-only" htmlFor="get-chat-name">Chat name</label>
+            <input placeholder="Chat Name" id="get-chat-name" value={chatName} type="text" maxLength={30} onChange={(e) => setChatName(e.target.value)}/>
+            <p id="popup-display-msg" role="status" aria-live="polite">{displayMsg}</p>
+            <div className="modal__actions">
+                <button className="btn btn--ghost" type="button" onClick={() => setCreateChatsDisplay(false)}>Cancel</button>
+                <button className="btn btn--primary" id="create-chat-btn" type="button" disabled={!canSubmit} onClick={async () => {
+                    setCreating(true);
+                    try {
+                        await createChat(currentUser.username, currentUser.id, selectedFriends, chatName, setChatName, setSelectedFriends, setCreateChatsDisplay, setDisplayMsg);
+                        await refreshChats();
+                    } finally {
+                        setCreating(false);
+                    }
+                }}>
+                    {creating ? "Creating…" : "Create Chat"}
+                </button>
+            </div>
+        </Modal>
     )
 }
 async function createChat (creator_username: string, creator_id: number, addedFriends: CurrOutIncFriendsQuery[], chat_name: string, setChatName: (value: string) => void, setSelectedFriends: (value: CurrOutIncFriendsQuery[]) => void, setCreateChatsDisplay: (value: boolean) => void, setDisplayMsg: (value: string) => void) {
     try {
-        const response = await fetch("/api/chats/createChat", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({creator_username, creator_id, addedFriends, chat_name})
-        });
-        const parsed: standardResponse = await response.json();
-        console.log(parsed.message);
+        const parsed = await postJson<standardResponse>("/api/chats/createChat", {creator_username, creator_id, addedFriends, chat_name});
         if (!parsed.success) {
+            // keep the name and selections so the user can correct and retry
             setDisplayMsg(parsed.message);
-        } else {
-            setCreateChatsDisplay(false);
+            return;
         }
+        setChatName("");
+        setSelectedFriends([]);
+        setCreateChatsDisplay(false);
     } catch (err) {
-        console.log(err);
+        setDisplayMsg(errorMessage(err));
     }
-    setChatName("");
-    setSelectedFriends([]); // reset inputs
 }
 
 export default ChatsPage;

@@ -48,7 +48,7 @@ router.post("/prompt", async (req:Request<{},{},PromptGeminiInput>, res:Response
         // Emit the user's prompt message immediately (before AI responds)
         try { getIO().to(`chat:${chat_id}`).emit('new-message', toSocketPayload(promptRow)); } catch {}
 
-        const model = genAI.getGenerativeModel({model: "gemma-3-4b-it"});
+        const model = genAI.getGenerativeModel({model: "gemini-3.1-flash-lite"});
 
         const systemPrompt = `You are a helpful assistant in a chat application. Provide a quick, concise response to the user's question.
 

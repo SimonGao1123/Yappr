@@ -135,6 +135,10 @@ io.on('connection', (socket) => {
   }
   socket.data.userId = userId;
 
+  // Per-user room. Mutating routes push `chats:changed` / `friends:changed` here
+  // so the client no longer has to poll every 5 seconds.
+  socket.join(`user:${userId}`);
+
   socket.on('join-chat', (chatId: number) => {
     socket.join(`chat:${chatId}`);
   });

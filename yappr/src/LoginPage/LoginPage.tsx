@@ -3,6 +3,7 @@ import './LoginPage.css';
 
 import type { LoginPageProps, UserLoginProps, UserRegisterProps } from '../../definitions/loginTypes.js';
 import type { standardResponse } from '../../definitions/globalType.js';
+import { errorMessage, postJson } from '../data/http.js';
 
 function LoginPage ({setLoginStatus, setCurrentUser}: LoginPageProps) {
     const [loginUserEmail, setLoginUserEmail] = useState("");
@@ -52,64 +53,72 @@ function LoginPage ({setLoginStatus, setCurrentUser}: LoginPageProps) {
             
             
     return (
-        <>
+        <div className='login-shell'>
             <h1 className='title-login'>YappR</h1>
             <main className='main-login'>
                 {displayLogin ? loginSection : registerSection}
-                
-                <p id="display-msg">{displayMessage}</p>
-                
-                {displayLogin ? 
-                <p>Register <button className='inline-btn-login' onClick={() => 
-                    {switchLoginDisplay(false) 
+
+                <p id="display-msg" role="status" aria-live="polite">{displayMessage}</p>
+
+                {displayLogin ?
+                <p className='login-switch'>Register <button type="button" className='inline-btn-login' onClick={() =>
+                    {switchLoginDisplay(false)
                     resetAllFields()}}>here</button></p> :
-                <p>Login <button className='inline-btn-login' onClick={() => 
+                <p className='login-switch'>Login <button type="button" className='inline-btn-login' onClick={() =>
                 {switchLoginDisplay(true)
                 resetAllFields()
                 }}>here</button></p>}
             </main>
-        </>
+        </div>
     );
 }
 
 
 function UserLogin ({loginUserEmail, setLoginUserEmail, loginPassword, setLoginPassword, setDisplayMessage, setLoginStatus, setCurrentUser}: UserLoginProps) {
-    function handleUserLogin (e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
+    const [submitting, setSubmitting] = useState(false);
 
-        fetch("/api/userLogins/login", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            credentials: "include",
-            body: JSON.stringify({userOrEmail: loginUserEmail, password: loginPassword})
-        }).then(async (response) => {
-            const parsed: standardResponse = await response.json();
+    async function handleUserLogin (e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        if (submitting) return;
+
+        setSubmitting(true);
+        setDisplayMessage("");
+        try {
+            const parsed = await postJson<standardResponse>("/api/userLogins/login", {
+                userOrEmail: loginUserEmail,
+                password: loginPassword,
+            });
 
             if (parsed.success && parsed.user) {
                 const {username, id} = parsed.user;
                 setLoginStatus(false);
-                setCurrentUser({username, id}); 
+                setCurrentUser({username, id});
             }
             setDisplayMessage(parsed.message);
-        }).catch((error) => {
-            console.log("Error while logging in: ", error);
-        })
-        setLoginUserEmail("");
-        setLoginPassword("");
-    }   
+        } catch (error) {
+            setDisplayMessage(errorMessage(error));
+        } finally {
+            setSubmitting(false);
+            setLoginPassword("");
+        }
+    }
     return (
         <>
             <h2 className='login-header'>Login</h2>
             <form className='form-login' onSubmit={handleUserLogin}>
                 <div className='login-input-container'>
-                    <input className="input-login" placeholder="Username/Email" id="login-username" type="text" maxLength={30} value={loginUserEmail} onChange={(e) => setLoginUserEmail(e.target.value)}/>
+                    <label className="sr-only" htmlFor="login-username">Username or email</label>
+                    <input className="input-login" placeholder="Username/Email" id="login-username" type="text" autoComplete="username" maxLength={225} value={loginUserEmail} onChange={(e) => setLoginUserEmail(e.target.value)}/>
                 </div>
 
                 <div className='login-input-container'>
-                    <input className="input-login" placeholder='Password' id="login-password" type="text" maxLength={30} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
+                    <label className="sr-only" htmlFor="login-password">Password</label>
+                    <input className="input-login" placeholder='Password' id="login-password" type="password" autoComplete="current-password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
                 </div>
 
-                <button className="login-btn" id="login-btn" type="submit">Login</button>
+                <button className="login-btn" id="login-btn" type="submit" disabled={submitting}>
+                    {submitting ? "Logging in…" : "Login"}
+                </button>
             </form>
 
         </>
@@ -120,8 +129,11 @@ function UserRegister ({registerUsername, setRegisterUsername, registerPassword,
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // checks if email is valid
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).+$/;
     
-    function handleUserRegister (e:React.FormEvent<HTMLFormElement>) {
+    const [submitting, setSubmitting] = useState(false);
+
+    async function handleUserRegister (e:React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
+        if (submitting) return;
         if (confirmRegisterPassword !== registerPassword) {
             setDisplayMessage("Password's don't match");
             return;    
@@ -138,50 +150,56 @@ function UserRegister ({registerUsername, setRegisterUsername, registerPassword,
             return; 
         }
 
-        fetch("/api/userLogins/register", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({username: registerUsername, password: registerPassword, email: registerEmail})
-        }).then(async (response) => {
-            const parsed: standardResponse = await response.json();
-            console.log(parsed);
+        setSubmitting(true);
+        setDisplayMessage("");
+        try {
+            const parsed = await postJson<standardResponse>("/api/userLogins/register", {
+                username: registerUsername,
+                password: registerPassword,
+                email: registerEmail,
+            });
             if (parsed.success) {
                 switchLoginDisplay(true);
-            } 
+                setRegisterUsername("");
+                setRegisterEmail("");
+            }
             setDisplayMessage(parsed.message);
-        }).catch((error) => {
-            console.log("Error occurred while registration: ", error);
-        });
-
-        setDisplayMessage("");
-        setRegisterUsername("");
-        setRegisterPassword("");
-        setRegisterEmail("");
-    }   
+        } catch (error) {
+            setDisplayMessage(errorMessage(error));
+        } finally {
+            setSubmitting(false);
+            setRegisterPassword("");
+            setConfirmPassword("");
+        }
+    }
     return (
         <>
             <h2 className='login-header'>Register</h2>
             <form className='form-login' onSubmit={handleUserRegister}>
 
                 <div className='register-input-container'>
-                    <input className="input-login" placeholder="Username" id="register-username" type="text" maxLength={30} value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)}/>
+                    <label className="sr-only" htmlFor="register-username">Username</label>
+                    <input className="input-login" placeholder="Username" id="register-username" type="text" autoComplete="username" maxLength={30} value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <input className="input-login" placeholder="Email" id="register-email" type="text" maxLength={225} value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)}/>
+                    <label className="sr-only" htmlFor="register-email">Email</label>
+                    <input className="input-login" placeholder="Email" id="register-email" type="email" autoComplete="email" maxLength={225} value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <input className="input-login" placeholder="Password" id="register-password" type="text" maxLength={30} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)}/>
+                    <label className="sr-only" htmlFor="register-password">Password</label>
+                    <input className="input-login" placeholder="Password" id="register-password" type="password" autoComplete="new-password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)}/>
                 </div>
 
                 <div className='register-input-container'>
-                    <input className="input-login" placeholder="Confirm Password" id="register-password-confirm" type="text" maxLength={30} value={confirmRegisterPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
+                    <label className="sr-only" htmlFor="register-password-confirm">Confirm password</label>
+                    <input className="input-login" placeholder="Confirm Password" id="register-password-confirm" type="password" autoComplete="new-password" value={confirmRegisterPassword} onChange={(e) => setConfirmPassword(e.target.value)}/>
                 </div>
 
-                
-
-                <button className="login-btn" id="register-btn" type="submit">Register</button>
+                <button className="login-btn" id="register-btn" type="submit" disabled={submitting}>
+                    {submitting ? "Creating account…" : "Register"}
+                </button>
             </form>
 
         </>

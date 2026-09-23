@@ -25,6 +25,8 @@ interface LightModeResponse {
   message?: string;
 }
 import { Link, Route, Routes, useNavigate } from 'react-router-dom';
+import { errorMessage, fetchJson } from './data/http.js';
+import { ToastRegion, showToast } from './ui/Toast.js';
 import type { CurrChat, GetChatsResponse } from '../definitions/chatsTypes.js';
 import type { SelectMessagesFromChat } from '../definitions/messagingTypes.js';
 
@@ -61,26 +63,29 @@ function App() {
     // 1 = in queue waiting
     // 2 = in chat
 
-    // runs every time refresh - checks session on mount
+    // Theme is applied once at the root; components use tokens, not per-element classes.
     useEffect(() => {
-      // Always navigate to chats page on mount/refresh
+      document.documentElement.setAttribute('data-theme', ifLightMode ? 'light' : 'dark');
+    }, [ifLightMode]);
+
+    // Session check. Runs on mount only — it previously re-ran (and force-navigated
+    // back to /) every time currentlyLoggingIn changed, contradicting its own comment.
+    useEffect(() => {
       navigate("/");
       setDisplayIndex(0);
-      fetch("/api/userLogins/me", {
-        method: "GET",
-        credentials: "include"
-      }).then(async response => {
-        const parsed: MeResponse = await response.json();
-        if (parsed.loggedIn && parsed.user) {
-          const {username, id} = parsed.user;
-          setLoginStatus(false);
-          setCurrentUser({username, id});
-          console.log("/me fetch: ", parsed);
-        }
-      }).catch(err => {
-        console.log("Error in identifying session", err);
-      });
-    }, [currentlyLoggingIn]); // Only run once on mount
+      fetchJson<MeResponse>("/api/userLogins/me")
+        .then(parsed => {
+          if (parsed.loggedIn && parsed.user) {
+            const {username, id} = parsed.user;
+            setLoginStatus(false);
+            setCurrentUser({username, id});
+          }
+        })
+        .catch(err => {
+          console.log("Error in identifying session", err);
+        });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (!currentUser?.id) {
@@ -89,14 +94,26 @@ function App() {
         }
         socket.connect();
         getAllData();
+
+        // The server pushes on every mutation, so there is no 5s poll any more.
+        // The slow interval is only a safety net for a dropped socket.
+        const onChatsChanged = () => { refreshChats(); };
+        const onFriendsChanged = () => { refreshFriends(); };
+        socket.on('chats:changed', onChatsChanged);
+        socket.on('friends:changed', onFriendsChanged);
+
         const intervalId = setInterval(() => {
-          getAllData();
-        }, 5000);
+          refreshChats();
+          refreshFriends();
+        }, 60000);
 
         return () => {
           clearInterval(intervalId);
+          socket.off('chats:changed', onChatsChanged);
+          socket.off('friends:changed', onFriendsChanged);
           socket.disconnect();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser?.id]);
 
     // Handle browser/tab closing for all pages (automatically leave tab)
@@ -124,50 +141,63 @@ function App() {
     }, [currentUser?.id, status]);
 
 
-    // fetches all data from backend in parallel
-    async function getAllData () {
+    async function refreshChats () {
       if (!currentUser?.id) return;
       try {
-        const [ChatData, IncRequests, LightMode, OutRequests, CurrFriends]: [GetChatsResponse, GetIncFriendsResponse, LightModeResponse, GetOutFriendsResponse, GetCurrFriendsResponse]
-         = await Promise.all([
-          fetch(`/api/chats/displayChats/${currentUser.id}`).then(res => res.json()),
-          fetch(`/api/friends/incomingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/api/settings/ifLightMode/${currentUser.id}`).then(res => res.json()),
-          fetch(`/api/friends/outgoingRequests/${currentUser.id}`).then(res => res.json()),
-          fetch(`/api/friends/currFriends/${currentUser.id}`).then(res => res.json())
-        ]);
-        if (!ChatData.success || !IncRequests.success || !OutRequests.success || !CurrFriends.success) throw new Error("One of the responses was not successful");
-        
-        setAllChats(ChatData.chat_data ?? []);
-        if (LightMode.success && LightMode.light_mode !== undefined) {
-          setIfLightMode(LightMode.light_mode === 1);
-        }
-        setInFriendReq(IncRequests.incomingRequests ?? []);
-        setOutFriendReq(OutRequests.outgoingRequests ?? []);
-        setCurrentFriends(CurrFriends.currFriends ?? []);
-        
-
+        const data = await fetchJson<GetChatsResponse>(`/api/chats/displayChats/${currentUser.id}`);
+        if (data.success) setAllChats(data.chat_data ?? []);
       } catch (err) {
-        console.error("One promise failed: ", err);
+        showToast(errorMessage(err));
+      }
+    }
+
+    async function refreshFriends () {
+      if (!currentUser?.id) return;
+      try {
+        const [inc, out, curr] = await Promise.all([
+          fetchJson<GetIncFriendsResponse>(`/api/friends/incomingRequests/${currentUser.id}`),
+          fetchJson<GetOutFriendsResponse>(`/api/friends/outgoingRequests/${currentUser.id}`),
+          fetchJson<GetCurrFriendsResponse>(`/api/friends/currFriends/${currentUser.id}`),
+        ]);
+        if (inc.success) setInFriendReq(inc.incomingRequests ?? []);
+        if (out.success) setOutFriendReq(out.outgoingRequests ?? []);
+        if (curr.success) setCurrentFriends(curr.currFriends ?? []);
+      } catch (err) {
+        showToast(errorMessage(err));
+      }
+    }
+
+    // Initial load. light_mode is read once here and never re-polled — the old 5s
+    // poll re-read it and clobbered a theme the user had just toggled.
+    async function getAllData () {
+      if (!currentUser?.id) return;
+      await Promise.all([refreshChats(), refreshFriends()]);
+      try {
+        const lightMode = await fetchJson<LightModeResponse>(`/api/settings/ifLightMode/${currentUser.id}`);
+        if (lightMode.success && lightMode.light_mode !== undefined) {
+          setIfLightMode(lightMode.light_mode === 1);
+        }
+      } catch {
+        // theme is cosmetic; keep the current value rather than nagging
       }
     }
 
 
     const MAIN_PAGE = (
       <>
-        <div id="top-bar" className={!ifLightMode?"dark-mode":""}>
+        <div id="top-bar">
           <h1 id="title">YappR</h1>
-          <NavBar  
+          <NavBar
             setDisplayIndex={setDisplayIndex}
             displayIndex={displayIndex}
             ifLightMode={ifLightMode}
           />
           <div style={{flex: 1}}></div>
-          <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)}>
-            <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="Settings" id="settings-icon"/>
+          <Link to="settings" className={`nav-btn desktop-settings ${displayIndex===2?"active-tab":""}`} id="nav-settings-btn" onClick={() => setDisplayIndex(2)} aria-label="Settings">
+            <img src={ifLightMode ? settingsIcon : settingsIconDark} alt="" id="settings-icon"/>
           </Link>
         </div>
-        <main style={!ifLightMode?{backgroundColor: "#1e1e1e"}:{}} id="app-main-section">
+        <main id="app-main-section">
           {currentUser ?
           <>
           <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
@@ -213,7 +243,7 @@ function App() {
             }/>
           </Routes>
           </Suspense>
-          <div id="user-info-container" className={!ifLightMode?"dark-mode":""}><p id="user-info" className={!ifLightMode?"dark-mode":""}>Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div>
+          <div id="user-info-container"><p id="user-info">Welcome <b>{currentUser.username}</b>, id: {currentUser.id}</p></div>
           </> : <></>}
         </main>
       </>
@@ -222,7 +252,7 @@ function App() {
   return (
     <>
         {currentlyLoggingIn ? <LoginPage setCurrentUser={setCurrentUser} setLoginStatus={setLoginStatus}/> : MAIN_PAGE}
-        
+        <ToastRegion />
     </>
   );
 }
@@ -245,14 +275,14 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
     <>
       {/* Desktop Navigation */}
       <nav className="desktop-nav">
-        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn nav-fixed ${displayIndex===0?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-chats-btn">Chats</Link>
-        <Link to="/randomChats" onClick={() => handleNavClick(3)} className={`nav-btn nav-fixed ${displayIndex===3?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-random-btn">RandomYapp</Link>
-        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn nav-fixed ${displayIndex===1?"active-tab":""} ${!ifLightMode?"dark-mode":""}`} id="nav-friends-btn-unique">Friends</Link>
+        <Link to="/" onClick={() => handleNavClick(0)} className={`nav-btn nav-fixed ${displayIndex===0?"active-tab":""}`} id="nav-chats-btn">Chats</Link>
+        <Link to="/randomChats" onClick={() => handleNavClick(3)} className={`nav-btn nav-fixed ${displayIndex===3?"active-tab":""}`} id="nav-random-btn">RandomYapp</Link>
+        <Link to="/friends" onClick={() => handleNavClick(1)} className={`nav-btn nav-fixed ${displayIndex===1?"active-tab":""}`} id="nav-friends-btn-unique">Friends</Link>
       </nav>
       {/* Mobile Navigation */}
       <div className="mobile-nav">
         <button 
-          className={`hamburger-btn ${!ifLightMode?"dark-mode":""}`} 
+          className="hamburger-btn" 
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
         >
@@ -264,27 +294,27 @@ function NavBar ({ifLightMode, setDisplayIndex, displayIndex}: NavBarProps) {
           <span className="current-tab-name">{getTabName()}</span>
         </button>
         {menuOpen && (
-          <div className={`dropdown-menu ${!ifLightMode?"dark-mode":""}`}>
+          <div className="dropdown-menu">
             <Link to="/"
-              className={`dropdown-item ${displayIndex===0?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              className={`dropdown-item ${displayIndex===0?"active":""}`} 
               onClick={() => handleNavClick(0)}
             >
               Chats
             </Link>
             <Link to="/randomChats" 
-              className={`dropdown-item ${displayIndex===3?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              className={`dropdown-item ${displayIndex===3?"active":""}`} 
               onClick={() => handleNavClick(3)}
             >
               RandomYapp
             </Link>
             <Link to="/friends" 
-              className={`dropdown-item ${displayIndex===1?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              className={`dropdown-item ${displayIndex===1?"active":""}`} 
               onClick={() => handleNavClick(1)}
             >
               Friends
             </Link>
             <Link to="/settings"
-              className={`dropdown-item ${displayIndex===2?"active":""} ${!ifLightMode?"dark-mode":""}`} 
+              className={`dropdown-item ${displayIndex===2?"active":""}`} 
               onClick={() => handleNavClick(2)}
             >
               Settings

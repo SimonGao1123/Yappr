@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { UsernameInChatQuery } from './chatsTypes.js';
 import type { SelectMessagesFromChat } from './messagingTypes.js';
 import type { CurrOutIncFriendsQuery } from './friendsTypes.js';
@@ -85,7 +86,7 @@ export type WaitingScreenProps = {
     queueSize: number | null, 
     setStatus: (value: number)=>void, 
     setCurrChatData: (value: chatData | null) => void, 
-    setMessageData: (value: SelectMessagesFromChat[] | null) => void,
+    setMessageData: React.Dispatch<React.SetStateAction<SelectMessagesFromChat[] | null>>,
     ifLightMode: boolean
 }
 
@@ -95,7 +96,7 @@ export type ChatsDisplayProps = {
     messageData: SelectMessagesFromChat[] | null,
     setStatus: (value: number)=>void, 
     setCurrChatData: (value: chatData | null) => void, 
-    setMessageData: (value: SelectMessagesFromChat[] | null) => void,
+    setMessageData: React.Dispatch<React.SetStateAction<SelectMessagesFromChat[] | null>>,
     ifLightMode: boolean,
     setQueueSize: (value: number|null)=>void,
     currentFriends: CurrOutIncFriendsQuery[],
@@ -124,7 +125,7 @@ export type RandomMessageDisplayProps = {
     chat_id: number,
     ifLightMode: boolean,
     messageData: SelectMessagesFromChat[] | null
-    setMessageData: (value: SelectMessagesFromChat[] | null) => void, 
+    setMessageData: React.Dispatch<React.SetStateAction<SelectMessagesFromChat[] | null>>, 
     setCurrChatData: (value: chatData | null) => void,
     setStatus: (value: number)=> void,
     setQueueSize: (value: number | null)=> void
@@ -133,7 +134,7 @@ export type SendMessageInputRandom = {
     currentUser: {username: string, id: number},
     chat_id: number, 
     ifLightMode: boolean, 
-    setMessageData: (value: SelectMessagesFromChat[] | null) => void, 
+    setMessageData: React.Dispatch<React.SetStateAction<SelectMessagesFromChat[] | null>>, 
     setCurrChatData: (value: chatData | null) => void,
     setStatus: (value: number)=> void,
     setQueueSize: (value: number | null)=> void

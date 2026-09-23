@@ -1,5 +1,6 @@
 import express from 'express';
 import prisma from '../prisma.js';
+import { notifyFriendsChanged } from '../socketInstance.js';
 import type {Request, Response} from 'express';
 const router = express.Router();
 
@@ -72,6 +73,7 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
             await prisma.friends.create({
                 data: {sender_id, receiver_id: idReceiver, status: "pending"}
             });
+            notifyFriendsChanged([sender_id, idReceiver]);
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         }
 
@@ -86,6 +88,7 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
                 where: {friend_id: rowsCurrStatus.friend_id},
                 data: {status: "pending", updated_at: new Date()}
             });
+            notifyFriendsChanged([sender_id, idReceiver]);
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         }
         else if (swappedRowsCurrStatus?.status === "unfriended" || swappedRowsCurrStatus?.status === "rejected") {
@@ -93,6 +96,7 @@ router.post("/sendFriendRequest", async (req: Request<{},{},SendRequestInput>, r
                 where: {friend_id: swappedRowsCurrStatus.friend_id},
                 data: {status: "pending", sender_id, receiver_id: idReceiver, updated_at: new Date()}
             });
+            notifyFriendsChanged([sender_id, idReceiver]);
             return res.status(201).json({success: true, message: `Successfully sent friend request to ${usernameReceiver}`});
         } else {
             return res.status(401).json({success: false, message: "Invalid status"});
@@ -129,6 +133,7 @@ router.post("/cancel", async (req: Request<{},{},CancelRequestInput>, res: Respo
             where: {friend_id},
             data: {status: "rejected", updated_at: new Date()}
         });
+        notifyFriendsChanged([row.sender_id, row.receiver_id]);
         return res.status(201).json({success: true, message: `Successfully cancelled request towards ${receiver_username}`});
     } catch (err) {
         console.log("Error while cancelling friend request: ", err);
@@ -158,6 +163,7 @@ router.post("/reject", async (req: Request<{},{},AcceptRejectRequestInput>, res:
             where: {friend_id},
             data: {status: "rejected", updated_at: new Date()}
         });
+        notifyFriendsChanged([row.sender_id, row.receiver_id]);
         return res.status(201).json({success: true, message: `Successfully rejected ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while rejecting friend request: ", err);
@@ -189,6 +195,7 @@ router.post("/accept", async (req: Request<{},{},AcceptRejectRequestInput>, res:
             where: {friend_id},
             data: {status: "accepted", updated_at: new Date()}
         });
+        notifyFriendsChanged([row.sender_id, row.receiver_id]);
         return res.status(201).json({success: true, message: `Successfully accepted ${sender_username}'s friend request`});
     } catch (err) {
         console.log("Error while accepting friend request: ", err);
@@ -216,6 +223,7 @@ router.post("/unfriend", async(req: Request<{},{},UnfriendInput>, res: Response<
             where: {friend_id},
             data: {status: "unfriended", updated_at: new Date()}
         });
+        notifyFriendsChanged([row.sender_id, row.receiver_id]);
         return res.status(201).json({success: true, message: `Successfully unfriended ${other_user_username}`});
     } catch (err) {
         console.log("Error while unfriending: ", err);
